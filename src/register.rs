@@ -1,4 +1,3 @@
-
 pub struct Registers {
     // 8 bit registers
     a: u8,
@@ -10,14 +9,12 @@ pub struct Registers {
     h: u8,
     l: u8,
     // 16 bit registers
-    // sp: u16,
-    // pc: u16,
-
+    sp: u16,
+    pc: u16,
 }
 
 impl Registers {
-
-    pub fn new() -> Registers{
+    pub fn new() -> Registers {
         Registers {
             a: 0,
             f: 0,
@@ -27,6 +24,8 @@ impl Registers {
             e: 0,
             h: 0,
             l: 0,
+            sp: 0,
+            pc: 0,
         }
     }
 
@@ -40,38 +39,7 @@ impl Registers {
             "e" => self.e = value,
             "h" => self.h = value,
             "l" => self.l = value,
-            _   => panic!("Invalid register accessed"),
-        }
-    }
-
-    fn split_high_low_bytes(value: u16) -> (u8,u8) {
-        let high: u8 = (value >> 8) as u8;
-        let low: u8 = (value & 0x00FF) as u8;
-        (high,low)
-    }
-
-    pub fn set_16b_reg(&mut self, reg: &str, value: u16) {
-        match reg {
-            "af" => {
-                let (x, y) = Registers::split_high_low_bytes(value);
-                self.a = x;
-                self.f = y;
-            },
-            "bc" => {
-                let (x, y) = Registers::split_high_low_bytes(value);
-                self.b = x;
-                self.c = y;
-            },
-            "de" => {
-                let (x, y) = Registers::split_high_low_bytes(value);
-                self.d = x;
-                self.e = y;
-            },
-            "hl" => {let (x, y) = Registers::split_high_low_bytes(value);
-                self.h = x;
-                self.l = y;
-            },
-            _   => panic!("Invalid register accessed")
+            _ => panic!("Invalid register accessed"),
         }
     }
 
@@ -85,13 +53,36 @@ impl Registers {
             "e" => self.e,
             "h" => self.h,
             "l" => self.l,
-            _   => panic!("Invalid register accessed"),
+            _ => panic!("Invalid register accessed"),
         }
     }
 
-    fn combine_high_low_bytes(high_byte: u8, low_byte: u8) -> u16{
-        let high: u16 = (high_byte as u16) << 8;
-        high + low_byte as u16
+    pub fn set_16b_reg(&mut self, reg: &str, value: u16) {
+        match reg {
+            "af" => {
+                let (x, y) = Registers::split_high_low_bytes(value);
+                self.a = x;
+                self.f = y;
+            }
+            "bc" => {
+                let (x, y) = Registers::split_high_low_bytes(value);
+                self.b = x;
+                self.c = y;
+            }
+            "de" => {
+                let (x, y) = Registers::split_high_low_bytes(value);
+                self.d = x;
+                self.e = y;
+            }
+            "hl" => {
+                let (x, y) = Registers::split_high_low_bytes(value);
+                self.h = x;
+                self.l = y;
+            }
+            "sp" => self.sp = value,
+            "pc" => self.pc = value,
+            _ => panic!("Invalid register accessed"),
+        }
     }
 
     pub fn get_16b_reg(&self, reg: &str) -> u16 {
@@ -100,34 +91,28 @@ impl Registers {
             "bc" => Registers::combine_high_low_bytes(self.b, self.c),
             "de" => Registers::combine_high_low_bytes(self.d, self.e),
             "hl" => Registers::combine_high_low_bytes(self.h, self.l),
-            _   => panic!("Invalid register accessed")
+            "sp" => self.sp,
+            "pc" => self.pc,
+            _ => panic!("Invalid register accessed"),
         }
     }
 
-}
+    fn combine_high_low_bytes(high_byte: u8, low_byte: u8) -> u16 {
+        let high: u16 = (high_byte as u16) << 8;
+        high + low_byte as u16
+    }
 
+    fn split_high_low_bytes(value: u16) -> (u8, u8) {
+        let high: u8 = (value >> 8) as u8;
+        let low: u8 = (value & 0x00FF) as u8;
+        (high, low)
+    }
+}
 
 // unit tests for registers
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn register_set_get_16b() {
-        let registers_16b_str = vec!["af", "bc", "de", "hl"];
-
-        let mut registers = Registers::new();
-
-        for reg in &registers_16b_str {
-            registers.set_16b_reg(reg, 0xFFFF)
-        }
-
-        for reg in &registers_16b_str {
-            assert_eq!(0xFFFFu16, registers.get_16b_reg(reg));
-
-        }
-
-    }
 
     #[test]
     fn register_set_get_8b() {
@@ -142,9 +127,7 @@ mod tests {
         for reg in &registers_8b_str {
             assert_eq!(1u8, registers.get_8b_reg(reg))
         }
-
     }
-
 
     #[test]
     fn register_init_zero_8b() {
@@ -158,8 +141,16 @@ mod tests {
     }
 
     #[test]
+    #[should_panic]
+    fn register_invalid_8b() {
+        let registers = Registers::new();
+
+        registers.get_8b_reg("TEST");
+    }
+
+    #[test]
     fn register_init_zero_16b() {
-        let registers_16b_str = vec!["af", "bc", "de", "hl"];
+        let registers_16b_str = vec!["af", "bc", "de", "hl", "sp", "pc"];
 
         let registers = Registers::new();
 
@@ -169,11 +160,18 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
-    fn register_invalid_8b() {
-        let registers = Registers::new();
+    fn register_set_get_16b() {
+        let registers_16b_str = vec!["af", "bc", "de", "hl", "sp", "pc"];
 
-        registers.get_8b_reg("TEST");
+        let mut registers = Registers::new();
+
+        for reg in &registers_16b_str {
+            registers.set_16b_reg(reg, 0xFFFF)
+        }
+
+        for reg in &registers_16b_str {
+            assert_eq!(0xFFFFu16, registers.get_16b_reg(reg));
+        }
     }
 
     #[test]
