@@ -44,20 +44,35 @@ impl Registers {
         }
     }
 
-    // pub fn set_16b_reg(&self, reg: &str, value: u16) {
-    //     match reg {
-    //         "af" => {let (x, y) = split_high_low_bytes(value)},
-    //         "bc" => {let (x, y) = split_high_low_bytes(value)},
-    //         "de" => {let (x, y) = split_high_low_bytes(value)},
-    //         "hl" => {let (x, y) = split_high_low_bytes(value)},
-    //         _   => panic!("Invalid register accessed")
-    //     }
-    // }
-
     fn split_high_low_bytes(value: u16) -> (u8,u8) {
         let high: u8 = (value >> 8) as u8;
         let low: u8 = (value & 0x00FF) as u8;
         (high,low)
+    }
+
+    pub fn set_16b_reg(&mut self, reg: &str, value: u16) {
+        match reg {
+            "af" => {
+                let (x, y) = Registers::split_high_low_bytes(value);
+                self.a = x;
+                self.f = y;
+            },
+            "bc" => {
+                let (x, y) = Registers::split_high_low_bytes(value);
+                self.b = x;
+                self.c = y;
+            },
+            "de" => {
+                let (x, y) = Registers::split_high_low_bytes(value);
+                self.d = x;
+                self.e = y;
+            },
+            "hl" => {let (x, y) = Registers::split_high_low_bytes(value);
+                self.h = x;
+                self.l = y;
+            },
+            _   => panic!("Invalid register accessed")
+        }
     }
 
     pub fn get_8b_reg(&self, reg: &str) -> u8 {
@@ -74,6 +89,11 @@ impl Registers {
         }
     }
 
+    fn combine_high_low_bytes(high_byte: u8, low_byte: u8) -> u16{
+        let high: u16 = (high_byte as u16) << 8;
+        high + low_byte as u16
+    }
+
     pub fn get_16b_reg(&self, reg: &str) -> u16 {
         match reg {
             "af" => Registers::combine_high_low_bytes(self.a, self.f),
@@ -84,12 +104,6 @@ impl Registers {
         }
     }
 
-    fn combine_high_low_bytes(high_byte: u8, low_byte: u8) -> u16{
-        let high: u16 = (high_byte as u16) << 8;
-        high + low_byte as u16
-    }
-
-
 }
 
 
@@ -97,6 +111,40 @@ impl Registers {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn register_set_get_16b() {
+        let registers_16b_str = vec!["af", "bc", "de", "hl"];
+
+        let mut registers = Registers::new();
+
+        for reg in &registers_16b_str {
+            registers.set_16b_reg(reg, 0xFFFF)
+        }
+
+        for reg in &registers_16b_str {
+            assert_eq!(0xFFFFu16, registers.get_16b_reg(reg));
+
+        }
+
+    }
+
+    #[test]
+    fn register_set_get_8b() {
+        let registers_8b_str = vec!["a", "f", "b", "c", "d", "e", "h", "l"];
+
+        let mut registers = Registers::new();
+
+        for reg in &registers_8b_str {
+            registers.set_8b_reg(reg, 0x1)
+        }
+
+        for reg in &registers_8b_str {
+            assert_eq!(1u8, registers.get_8b_reg(reg))
+        }
+
+    }
+
 
     #[test]
     fn register_init_zero_8b() {
