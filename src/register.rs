@@ -42,22 +42,22 @@ impl Registers {
         }
     }
 
-    pub fn get_16b_reg(reg: &str) -> u16 {
+    pub fn get_16b_reg(&self, reg: &str) -> u16 {
         match reg {
             "af" => {
-                let high: u16 = self.a as u16  << 8
+                let high: u16 = (self.a as u16)  << 8;
                 high + self.f as u16
             },
             "bc" => {
-                let high: u16 = self.b as u16 << 8
+                let high: u16 = (self.b as u16) << 8;
                 high + self.c as u16
             },
             "de" => {
-                let high: u16 = self.d as u16 << 8
+                let high: u16 = (self.d as u16) << 8;
                 high + self.e as u16
             },
             "hl" => {
-                let high: u16 = self.d as u16 << 8
+                let high: u16 = (self.d as u16) << 8;
                 high + self.e as u16
             },
             _   => panic!("Invalid register accessed")
@@ -65,4 +65,49 @@ impl Registers {
     }
 
 
+}
+
+
+// unit tests for registers
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn register_init_zero_8b() {
+        let registers_8b_str = vec!["a", "f", "b", "c", "d", "e", "h", "l"];
+
+        let registers = Registers::new();
+
+        for reg in registers_8b_str {
+            assert_eq!(0u8, registers.get_8b_reg(reg));
+        }
+    }
+
+    #[test]
+    fn register_init_zero_16b() {
+        let registers_16b_str = vec!["af", "bc", "de", "hl"];
+
+        let registers = Registers::new();
+
+        for reg in registers_16b_str {
+            assert_eq!(0u16, registers.get_16b_reg(reg));
+        }
+    }
+
+    #[test]
+    #[should_panic]
+    fn register_invalid_8b() {
+        let registers = Registers::new();
+
+        registers.get_8b_reg("TEST");
+    }
+
+    #[test]
+    #[should_panic]
+    fn register_invalid_16b() {
+        let registers = Registers::new();
+
+        registers.get_16b_reg("TEST");
+    }
 }
