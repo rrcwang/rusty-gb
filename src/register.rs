@@ -1,3 +1,4 @@
+
 pub struct Registers {
     // 8 bit registers
     a: u8,
@@ -9,8 +10,9 @@ pub struct Registers {
     h: u8,
     l: u8,
     // 16 bit registers
-    //sp: u16,
-    //pc: u16,
+    // sp: u16,
+    // pc: u16,
+
 }
 
 impl Registers {
@@ -26,6 +28,36 @@ impl Registers {
             h: 0,
             l: 0,
         }
+    }
+
+    pub fn set_8b_reg(&mut self, reg: &str, value: u8) {
+        match reg {
+            "a" => self.a = value,
+            "f" => self.f = value,
+            "b" => self.b = value,
+            "c" => self.c = value,
+            "d" => self.d = value,
+            "e" => self.e = value,
+            "h" => self.h = value,
+            "l" => self.l = value,
+            _   => panic!("Invalid register accessed"),
+        }
+    }
+
+    // pub fn set_16b_reg(&self, reg: &str, value: u16) {
+    //     match reg {
+    //         "af" => {let (x, y) = split_high_low_bytes(value)},
+    //         "bc" => {let (x, y) = split_high_low_bytes(value)},
+    //         "de" => {let (x, y) = split_high_low_bytes(value)},
+    //         "hl" => {let (x, y) = split_high_low_bytes(value)},
+    //         _   => panic!("Invalid register accessed")
+    //     }
+    // }
+
+    fn split_high_low_bytes(value: u16) -> (u8,u8) {
+        let high: u8 = (value >> 8) as u8;
+        let low: u8 = (value & 0x00FF) as u8;
+        (high,low)
     }
 
     pub fn get_8b_reg(&self, reg: &str) -> u8 {
@@ -44,24 +76,17 @@ impl Registers {
 
     pub fn get_16b_reg(&self, reg: &str) -> u16 {
         match reg {
-            "af" => {
-                let high: u16 = (self.a as u16)  << 8;
-                high + self.f as u16
-            },
-            "bc" => {
-                let high: u16 = (self.b as u16) << 8;
-                high + self.c as u16
-            },
-            "de" => {
-                let high: u16 = (self.d as u16) << 8;
-                high + self.e as u16
-            },
-            "hl" => {
-                let high: u16 = (self.d as u16) << 8;
-                high + self.e as u16
-            },
+            "af" => Registers::combine_high_low_bytes(self.a, self.f),
+            "bc" => Registers::combine_high_low_bytes(self.b, self.c),
+            "de" => Registers::combine_high_low_bytes(self.d, self.e),
+            "hl" => Registers::combine_high_low_bytes(self.h, self.l),
             _   => panic!("Invalid register accessed")
         }
+    }
+
+    fn combine_high_low_bytes(high_byte: u8, low_byte: u8) -> u16{
+        let high: u16 = (high_byte as u16) << 8;
+        high + low_byte as u16
     }
 
 
