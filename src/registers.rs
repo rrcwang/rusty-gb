@@ -1,4 +1,4 @@
-pub struct CPU {
+pub struct Registers {
     // 8 bit registers
     a: u8,
     f: u8,
@@ -33,9 +33,9 @@ pub enum Register16b {
     PC,
 }
 
-impl CPU {
-    pub fn new() -> CPU {
-        CPU {
+impl Registers {
+    pub fn new() -> Registers {
+        Registers {
             a: 0,
             f: 0,
             b: 0,
@@ -49,8 +49,13 @@ impl CPU {
         }
     }
 
-    /// Sets the value in one of the 8 bit registers
-    pub fn set_8b_reg(&mut self, reg: Register8b, value: u8) {
+    /// Sets the value in one of the 8 bit CPU registers
+    /// 
+    /// # Arguments
+    /// 
+    /// * `reg` - The register to be written to.
+    /// * `value` - u8 value written to the specified register
+    pub fn set_8b_reg(&mut self, reg: &Register8b, value: u8) {
         match reg {
             Register8b::A => self.a = value,
             Register8b::F => self.f = value,
@@ -63,8 +68,16 @@ impl CPU {
         }
     }
 
-    /// Retrieves value stored in one of the 8 bit registers
-    pub fn get_8b_reg(&self, reg: Register8b) -> u8 {
+    /// Retrieves value stored in one of the 8 bit CPU registers.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `reg` - The register to be read from.
+    /// 
+    /// # Return value
+    /// 
+    /// u8 type.
+    pub fn get_8b_reg(&self, reg: &Register8b) -> u8 {
         match reg {
             Register8b::A => self.a,
             Register8b::F => self.f,
@@ -77,26 +90,35 @@ impl CPU {
         }
     }
 
-    /// Sets the value in one of the 16 bit registers
-    pub fn set_16b_reg(&mut self, reg: Register16b, value: u16) {
+    /// Sets the value in one of the 16 bit CPU registers
+    /// 
+    /// # Arguments
+    /// 
+    /// * `reg` - The register to be written to.
+    /// * `value` - u16 value written to the specified register
+    /// 
+    /// # Return value
+    /// 
+    /// u16 type.
+    pub fn set_16b_reg(&mut self, reg: &Register16b, value: u16) {
         match reg {
             Register16b::AF => {
-                let (x, y) = CPU::split_high_low_bytes(value);
+                let (x, y) = Registers::split_high_low_bytes(value);
                 self.a = x;
                 self.f = y;
             }
             Register16b::BC => {
-                let (x, y) = CPU::split_high_low_bytes(value);
+                let (x, y) = Registers::split_high_low_bytes(value);
                 self.b = x;
                 self.c = y;
             }
             Register16b::DE => {
-                let (x, y) = CPU::split_high_low_bytes(value);
+                let (x, y) = Registers::split_high_low_bytes(value);
                 self.d = x;
                 self.e = y;
             }
             Register16b::HL => {
-                let (x, y) = CPU::split_high_low_bytes(value);
+                let (x, y) = Registers::split_high_low_bytes(value);
                 self.h = x;
                 self.l = y;
             }
@@ -104,13 +126,22 @@ impl CPU {
             Register16b::PC => self.pc = value,
         }
     }
-
-    pub fn get_16b_reg(&self, reg: Register16b) -> u16 {
+    
+    /// Retrieves value stored in one of the 8 bit CPU registers.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `reg` - The register to be read from.
+    /// 
+    /// # Return value
+    /// 
+    /// u16 type.
+    pub fn get_16b_reg(&self, reg: &Register16b) -> u16 {
         match reg {
-            Register16b::AF => CPU::combine_high_low_bytes(self.a, self.f),
-            Register16b::BC => CPU::combine_high_low_bytes(self.b, self.c),
-            Register16b::DE => CPU::combine_high_low_bytes(self.d, self.e),
-            Register16b::HL => CPU::combine_high_low_bytes(self.h, self.l),
+            Register16b::AF => Registers::combine_high_low_bytes(self.a, self.f),
+            Register16b::BC => Registers::combine_high_low_bytes(self.b, self.c),
+            Register16b::DE => Registers::combine_high_low_bytes(self.d, self.e),
+            Register16b::HL => Registers::combine_high_low_bytes(self.h, self.l),
             Register16b::SP => self.sp,
             Register16b::PC => self.pc,
         }
@@ -128,7 +159,7 @@ impl CPU {
     }
 }
 
-// unit tests for CPU registers
+// unit tests for Registers registers
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -137,15 +168,13 @@ mod tests {
     fn register_set_get_8b() {
         let registers_8b = vec![Register8b::A, Register8b::F, Register8b::B, Register8b::C, Register8b::D, Register8b::E, Register8b::H, Register8b::L];
 
-        let mut cpu = CPU::new();
+        let mut cpu = Registers::new();
 
-        for reg in registers_8b {
+        for reg in &registers_8b {
             cpu.set_8b_reg(reg, 0x1)
         }
-        
-        let registers_8b = vec![Register8b::A, Register8b::F, Register8b::B, Register8b::C, Register8b::D, Register8b::E, Register8b::H, Register8b::L];
 
-        for reg in registers_8b {
+        for reg in &registers_8b {
             assert_eq!(1u8, cpu.get_8b_reg(reg))
         }
     }
@@ -154,9 +183,9 @@ mod tests {
     fn register_init_zero_8b() {
         let registers_8b = vec![Register8b::A, Register8b::F, Register8b::B, Register8b::C, Register8b::D, Register8b::E, Register8b::H, Register8b::L];
 
-        let cpu = CPU::new();
+        let cpu = Registers::new();
 
-        for reg in registers_8b {
+        for reg in &registers_8b {
             assert_eq!(0u8, cpu.get_8b_reg(reg));
         }
     }
@@ -165,9 +194,9 @@ mod tests {
     fn register_init_zero_16b() {
         let registers_16b = vec![Register16b::AF, Register16b::BC, Register16b::DE, Register16b::HL, Register16b::SP, Register16b::PC];
 
-        let cpu = CPU::new();
+        let cpu = Registers::new();
 
-        for reg in registers_16b {
+        for reg in &registers_16b {
             assert_eq!(0u16, cpu.get_16b_reg(reg));
         }
     }
@@ -176,15 +205,13 @@ mod tests {
     fn register_set_get_16b() {
         let registers_16b = vec![Register16b::AF, Register16b::BC, Register16b::DE, Register16b::HL, Register16b::SP, Register16b::PC];
 
-        let mut cpu = CPU::new();
+        let mut cpu = Registers::new();
 
-        for reg in registers_16b {
+        for reg in &registers_16b {
             cpu.set_16b_reg(reg, 0xF0F0u16)
         }
-        
-        let registers_16b = vec![Register16b::AF, Register16b::BC, Register16b::DE, Register16b::HL, Register16b::SP, Register16b::PC];
 
-        for reg in registers_16b {
+        for reg in &registers_16b {
             assert_eq!(0xF0F0u16, cpu.get_16b_reg(reg));
         }
     }
