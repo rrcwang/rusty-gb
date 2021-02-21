@@ -1,7 +1,7 @@
-mod register;
+mod cpu;
 
 
 fn main() {
-    register::Registers::new();
+    cpu::CPU::new();
 
 }
