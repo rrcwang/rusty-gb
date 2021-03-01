@@ -1,7 +1,7 @@
 [package]
-name = "rusty"
-version = "0.1.0"
-authors = ["zrauf <zrauf@sfu.ca>"]
+name = "rusty_gb"
+version = "0.0.0"
+authors = ["zrauf <zrauf@sfu.ca>", "rrcwang <rrcwang@g.ucla.edu>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
