@@ -113,24 +113,30 @@ impl Registers {
     ///
     /// `u16` type.
     pub fn set_16b_reg(&mut self, reg: &Register16b, value: u16) {
+        let split_high_low_bytes = |value: u16| {
+            let high: u8 = (value >> 8) as u8;
+            let low: u8 = (value & 0x00FF) as u8;
+            (high, low)
+        };
+
         match reg {
             Register16b::AF => {
-                let (x, y) = Registers::split_high_low_bytes(value);
+                let (x, y) = split_high_low_bytes(value);
                 self.a = x;
-                self.f = y;
+                self.f = y & 0xF0; // mask, lower 4 bits should always be 0
             }
             Register16b::BC => {
-                let (x, y) = Registers::split_high_low_bytes(value);
+                let (x, y) = split_high_low_bytes(value);
                 self.b = x;
                 self.c = y;
             }
             Register16b::DE => {
-                let (x, y) = Registers::split_high_low_bytes(value);
+                let (x, y) = split_high_low_bytes(value);
                 self.d = x;
                 self.e = y;
             }
             Register16b::HL => {
-                let (x, y) = Registers::split_high_low_bytes(value);
+                let (x, y) = split_high_low_bytes(value);
                 self.h = x;
                 self.l = y;
             }
@@ -148,25 +154,19 @@ impl Registers {
     ///
     /// `u16` type.
     pub fn get_16b_reg(&self, reg: &Register16b) -> u16 {
+        let combine_high_low_bytes = |high_byte: u8, low_byte: u8| -> u16 {
+            let high: u16 = (high_byte as u16) << 8;
+            high + low_byte as u16
+        };
+
         match reg {
-            Register16b::AF => Registers::combine_high_low_bytes(self.a, self.f),
-            Register16b::BC => Registers::combine_high_low_bytes(self.b, self.c),
-            Register16b::DE => Registers::combine_high_low_bytes(self.d, self.e),
-            Register16b::HL => Registers::combine_high_low_bytes(self.h, self.l),
+            Register16b::AF => combine_high_low_bytes(self.a, self.f),
+            Register16b::BC => combine_high_low_bytes(self.b, self.c),
+            Register16b::DE => combine_high_low_bytes(self.d, self.e),
+            Register16b::HL => combine_high_low_bytes(self.h, self.l),
             Register16b::SP => self.sp,
             Register16b::PC => self.pc,
         }
-    }
-
-    fn combine_high_low_bytes(high_byte: u8, low_byte: u8) -> u16 {
-        let high: u16 = (high_byte as u16) << 8;
-        high + low_byte as u16
-    }
-
-    fn split_high_low_bytes(value: u16) -> (u8, u8) {
-        let high: u8 = (value >> 8) as u8;
-        let low: u8 = (value & 0x00FF) as u8;
-        (high, low)
     }
 
     /// Sets desired flag in CPU register F to 1.
@@ -229,20 +229,20 @@ impl Registers {
 impl fmt::Display for Registers {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
-          f,
-          "A:{:02X} F:{:04b} \
-           B:{:02X} C:{:02X} \
-           D:{:02X} E:{:02X} \
-           H:{:02X} L:{:02X} \
-           PC:{:04X} \
-           SP:{:04X}",
-          self.a, self.f, self.b, self.c, self.d, self.e, self.h, self.l, self.pc, self.sp
+            f,
+            "A:{:02X} F:{:04b} \
+            B:{:02X} C:{:02X} \
+            D:{:02X} E:{:02X} \
+            H:{:02X} L:{:02X} \
+            PC:{:04X} \
+            SP:{:04X}",
+            self.a, self.f, self.b, self.c, self.d, self.e, self.h, self.l, self.pc, self.sp
         )
     }
 }
 
 /// unit tests for CPU registers
-/// 
+///
 /// NOTE: test functions named as `register_{TYPE}_{TEST}...`, where `TEST` refers to the functionality/cases tested for
 #[cfg(test)]
 mod tests {
@@ -276,12 +276,7 @@ mod tests {
         }
 
         pub fn all_flags() -> Vec<Flag> {
-            vec![
-                Flag::Z,
-                Flag::N,
-                Flag::H,
-                Flag::C,
-            ]
+            vec![Flag::Z, Flag::N, Flag::H, Flag::C]
         }
     }
 
@@ -356,7 +351,7 @@ mod tests {
     #[test]
     fn register_8b_set_16b_get() {
         let mut registers = Registers::new();
-        
+
         let registers_8b = common::all_registers_8b();
 
         for reg_8b in &registers_8b {
@@ -365,18 +360,24 @@ mod tests {
 
         let registers_16b = common::all_registers_16b();
 
-        for reg_16b in &registers_16b[0..4] { // exclude SP, PC registers
+        for reg_16b in &registers_16b[0..4] {
+            // AF, BC, DE, HL
             println!("{}", registers);
             assert_eq!(0xF0F0u16, registers.get_16b_reg(reg_16b));
         }
 
+        for reg_16b in &registers_16b[4..] {
+            // SP, PC
+            println!("{}", registers);
+            assert_eq!(0, registers.get_16b_reg(reg_16b));
+        }
     }
 
     #[test]
     fn register_flag_init_zero_get() {
         let flags = common::all_flags();
 
-        let mut registers = Registers::new();
+        let registers = Registers::new();
 
         for flag in &flags {
             assert_eq!(false, registers.get_flag(flag));
@@ -400,4 +401,25 @@ mod tests {
         }
     }
 
+    #[test]
+    fn benchmark_16b_write() {
+        
+        use std::time::{Duration, Instant};
+
+        let mut regs = Registers::new();
+
+        let n_test: u32 = 100000000;
+    
+        let now = Instant::now();
+    
+        for _ in 0..n_test {
+            regs.set_16b_reg(&Register16b::AF, 0xFFFF);
+            regs.set_16b_reg(&Register16b::AF, 0x0000);
+        }
+    
+        println!("u16 set time: {} ms", now.elapsed().as_millis());
+        // on average, about 4.0s. 
+        // unsafe, raw pointer access is about 3.6s. 
+        // maybe change implementation for performance if necessary?? 
+    }
 }
