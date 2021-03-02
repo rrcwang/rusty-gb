@@ -14,8 +14,8 @@ pub struct Registers {
     h: u8,
     l: u8,
     // 16 bit registers
-    sp: u16,
-    pc: u16,
+    pub sp: u16,
+    pub pc: u16,
 }
 
 pub enum Register8b {
@@ -47,7 +47,8 @@ pub enum Flag {
 
 impl Registers {
     pub fn new() -> Registers {
-        Registers {
+        Registers { 
+            // TODO: initial register values from AntonioND/giibiiadvance, §3.2
             a: 0,
             f: 0,
             b: 0,
@@ -67,7 +68,7 @@ impl Registers {
     ///
     /// * `reg` - The register to be written to.
     /// * `value` - u8 value written to the specified register
-    pub fn set_8b_reg(&mut self, reg: &Register8b, value: u8) {
+    pub fn set_8b_reg(&mut self, reg: Register8b, value: u8) {
         match reg {
             Register8b::A => self.a = value,
             Register8b::F => self.f = value, // should never be written to directly?
@@ -89,7 +90,7 @@ impl Registers {
     /// # Return value
     ///
     /// `u8` type.
-    pub fn get_8b_reg(&self, reg: &Register8b) -> u8 {
+    pub fn get_8b_reg(&self, reg: Register8b) -> u8 {
         match reg {
             Register8b::A => self.a,
             Register8b::F => self.f,
@@ -112,7 +113,7 @@ impl Registers {
     /// # Return value
     ///
     /// `u16` type.
-    pub fn set_16b_reg(&mut self, reg: &Register16b, value: u16) {
+    pub fn set_16b_reg(&mut self, reg: Register16b, value: u16) {
         let split_high_low_bytes = |value: u16| {
             let high: u8 = (value >> 8) as u8;
             let low: u8 = (value & 0x00FF) as u8;
@@ -153,7 +154,7 @@ impl Registers {
     /// # Return value
     ///
     /// `u16` type.
-    pub fn get_16b_reg(&self, reg: &Register16b) -> u16 {
+    pub fn get_16b_reg(&self, reg: Register16b) -> u16 {
         let combine_high_low_bytes = |high_byte: u8, low_byte: u8| -> u16 {
             let high: u16 = (high_byte as u16) << 8;
             high + low_byte as u16
@@ -286,11 +287,13 @@ mod tests {
 
         let mut registers = Registers::new();
 
-        for reg in &registers_8b {
+        for reg in registers_8b {
             registers.set_8b_reg(reg, 0x1)
         }
+        
+        let registers_8b = common::all_registers_8b();
 
-        for reg in &registers_8b {
+        for reg in registers_8b {
             assert_eq!(1u8, registers.get_8b_reg(reg))
         }
     }
@@ -301,7 +304,7 @@ mod tests {
 
         let registers = Registers::new();
 
-        for reg in &registers_8b {
+        for reg in registers_8b {
             assert_eq!(0u8, registers.get_8b_reg(reg));
         }
     }
@@ -312,7 +315,7 @@ mod tests {
 
         let registers = Registers::new();
 
-        for reg in &registers_16b {
+        for reg in registers_16b {
             assert_eq!(0u16, registers.get_16b_reg(reg));
         }
     }
@@ -323,11 +326,13 @@ mod tests {
 
         let mut registers = Registers::new();
 
-        for reg in &registers_16b {
+        for reg in registers_16b {
             registers.set_16b_reg(reg, 0xF0F0u16)
         }
+        
+        let registers_16b = common::all_registers_16b();
 
-        for reg in &registers_16b {
+        for reg in registers_16b {
             assert_eq!(0xF0F0u16, registers.get_16b_reg(reg));
         }
     }
@@ -338,12 +343,12 @@ mod tests {
 
         let registers_16b = common::all_registers_16b();
 
-        for reg_16b in &registers_16b {
+        for reg_16b in registers_16b {
             registers.set_16b_reg(reg_16b, 0xF0F0u16)
         }
 
         let registers_8b = common::all_registers_8b();
-        for reg_8b in &registers_8b {
+        for reg_8b in registers_8b {
             assert_eq!(0xF0u8, registers.get_8b_reg(reg_8b));
         }
     }
@@ -354,21 +359,20 @@ mod tests {
 
         let registers_8b = common::all_registers_8b();
 
-        for reg_8b in &registers_8b {
+        for reg_8b in registers_8b {
             registers.set_8b_reg(reg_8b, 0xF0u8);
         }
 
-        let registers_16b = common::all_registers_16b();
 
-        for reg_16b in &registers_16b[0..4] {
+        for reg_16b in vec![Register16b::AF, Register16b::BC, Register16b::DE, Register16b::HL] {
             // AF, BC, DE, HL
-            println!("{}", registers);
             assert_eq!(0xF0F0u16, registers.get_16b_reg(reg_16b));
         }
+        
+        let registers_16b = common::all_registers_16b();
 
-        for reg_16b in &registers_16b[4..] {
+        for reg_16b in vec![Register16b::SP, Register16b::PC] {
             // SP, PC
-            println!("{}", registers);
             assert_eq!(0, registers.get_16b_reg(reg_16b));
         }
     }
@@ -402,6 +406,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]   // time consuming test
     fn benchmark_16b_write() {
         
         use std::time::{Duration, Instant};
@@ -413,8 +418,8 @@ mod tests {
         let now = Instant::now();
     
         for _ in 0..n_test {
-            regs.set_16b_reg(&Register16b::AF, 0xFFFF);
-            regs.set_16b_reg(&Register16b::AF, 0x0000);
+            regs.set_16b_reg(Register16b::AF, 0xFFFF);
+            regs.set_16b_reg(Register16b::AF, 0x0000);
         }
     
         println!("u16 set time: {} ms", now.elapsed().as_millis());
