@@ -175,26 +175,17 @@ impl Registers {
     /// # Arguments
     ///
     /// * `flag` - The flag to be set. One of `Flag::{Z, N, H, C}`.
-    pub fn set_flag(&mut self, flag: &Flag) {
-        match flag {
-            Flag::Z => self.f |= 0b_1000_0000,
-            Flag::N => self.f |= 0b_0100_0000,
-            Flag::H => self.f |= 0b_0010_0000,
-            Flag::C => self.f |= 0b_0001_0000,
-        }
-    }
-
-    /// Clears desired flag in CPU register F to 0.
-    ///
-    /// # Arguments
-    ///
-    /// * `flag` - The flag to be cleared. One of `Flag::{Z, N, H, C}`.
-    pub fn clear_flag(&mut self, flag: &Flag) {
-        match flag {
-            Flag::Z => self.f &= 0b_0111_1111,
-            Flag::N => self.f &= 0b_1011_1111,
-            Flag::H => self.f &= 0b_1101_1111,
-            Flag::C => self.f &= 0b_1110_1111,
+    pub fn set_flag(&mut self, flag: Flag, value: bool) {
+        let mask = match flag {
+            Flag::Z => 0b_1000_0000,
+            Flag::N => 0b_0100_0000,
+            Flag::H => 0b_0010_0000,
+            Flag::C => 0b_0001_0000,
+        };
+        
+        match value {
+            true => self.f |= mask,
+            false => self.f &= !mask,
         }
     }
 
@@ -211,7 +202,7 @@ impl Registers {
     /// |:-------------:|:--------------------:|
     /// | `true`        | `register.flag == 1` |
     /// | `false `      | `register.flag == 0` |
-    pub fn get_flag(&self, flag: &Flag) -> bool {
+    pub fn get_flag(&self, flag: Flag) -> bool {
         let bit: u8 = match flag {
             Flag::Z => (self.f & 0b_1000_0000) >> 7,
             Flag::N => (self.f & 0b_0100_0000) >> 6,
@@ -246,7 +237,7 @@ impl fmt::Display for Registers {
 ///
 /// NOTE: test functions named as `register_{TYPE}_{TEST}...`, where `TEST` refers to the functionality/cases tested for
 #[cfg(test)]
-mod tests {
+mod test {
     use super::*;
 
     /// test helper module
@@ -369,8 +360,6 @@ mod tests {
             assert_eq!(0xF0F0u16, registers.get_16b_reg(reg_16b));
         }
         
-        let registers_16b = common::all_registers_16b();
-
         for reg_16b in vec![Register16b::SP, Register16b::PC] {
             // SP, PC
             assert_eq!(0, registers.get_16b_reg(reg_16b));
@@ -383,7 +372,7 @@ mod tests {
 
         let registers = Registers::new();
 
-        for flag in &flags {
+        for flag in flags {
             assert_eq!(false, registers.get_flag(flag));
         }
     }
@@ -394,13 +383,23 @@ mod tests {
 
         let mut registers = Registers::new();
         // set all flags and check for true
-        for flag in &flags {
-            registers.set_flag(flag);
+        for flag in flags {
+            registers.set_flag(flag, true);
+        }
+        
+        let flags = common::all_flags();
+        for flag in flags {
             assert_eq!(true, registers.get_flag(flag));
         }
+        
+        let flags = common::all_flags();
         // clear all flags and check for false
-        for flag in &flags {
-            registers.clear_flag(flag);
+        for flag in flags {
+            registers.set_flag(flag, false);
+        }
+        
+        let flags = common::all_flags();
+        for flag in flags {
             assert_eq!(false, registers.get_flag(flag));
         }
     }
@@ -409,7 +408,7 @@ mod tests {
     #[ignore]   // time consuming test
     fn benchmark_16b_write() {
         
-        use std::time::{Duration, Instant};
+        use std::time::Instant;
 
         let mut regs = Registers::new();
 

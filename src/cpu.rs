@@ -1,9 +1,10 @@
 use crate::registers;
 use registers::Register16b;
 use registers::Register8b;
+use registers::Flag;
 use crate::memory;
 
-pub struct CPU {
+pub struct Cpu {
     registers: registers::Registers,
     // CPU counters/states
     halted: bool,
@@ -12,15 +13,42 @@ pub struct CPU {
     mmu: memory::MMU,
 }
 
-impl CPU {
-    pub fn new() -> CPU {
-        CPU {
+impl Cpu {
+    pub fn new() -> Cpu {
+        Cpu { // TODO: what are the initilization values here?
             registers: registers::Registers::new(),
             halted: false,
-            interrupt_master_enable: false,
+            interrupt_master_enable: false, 
             mmu: memory::MMU::new(),
         }
     }
+    
+    /// Adds two byte length values and sets the relevant flags as appropriate for CPU instructions
+    /// 
+    /// # Flags
+    /// Z: true iff result == 0
+    /// N: false, not subtraction/negative
+    /// H: if sum of lower 4 bits overflows
+    /// C: if sum of 8 bits overflows
+    fn alu_add_bytes(&mut self, a: u8, b: u8) -> u8 {
+        let a = a as u16;
+        let b = b as u16;
+        let result = (a as u16).wrapping_add(b as u16);
+        
+        // set flags
+        self.registers.set_flag(Flag::N, false); // subtraction
+        // set half-carry: https://www.reddit.com/r/EmuDev/comments/692n59/gb_questions_about_halfcarry_and_best/
+        self.registers.set_flag(Flag::H, ((a ^ b ^ result) & 0x10) != 0);
+        // set full carry
+        self.registers.set_flag(Flag::C, (result & 0x100) != 0);
+        // cast to 8-bit
+        let result = result as u8;
+        // set zero flag
+        self.registers.set_flag(Flag::Z, result == 0);
+        
+        result  // return 8-bit 
+    }
+    
 
     /// returns the duration taken by the instruction in clock ticks taken
     /// one CPU cycle == "M-cycle"
@@ -141,6 +169,14 @@ impl CPU {
             // 0x60 -> 0x6F
             // 0x70 -> 0x7F
             // 0x80 -> 0x8F
+            0x80 => { // ADD A, B
+                
+                
+                self.registers.set_flag(Flag::N, false); // subtraction flag
+                
+                
+                4
+            }
             // 0x90 -> 0x9F
             // 0xA0 -> 0xAF
             // 0xB0 -> 0xBF

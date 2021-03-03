@@ -5,6 +5,6 @@ mod memory;
 use std::mem::size_of_val;
 
 fn main() {
-    let z80 = cpu::CPU::new();
+    let z80 = cpu::Cpu::new();
 
 }
