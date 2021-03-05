@@ -1,17 +1,16 @@
 // TODO implement memory
 //  * working RAM (WRAM)
 //  * video RAM (VRAM)
-//  * memory-mapped 
+//  * memory-mapped
 //  * memory write modes 1 & 2
 
 pub struct MMU {
     // TODO: emulate memory mapping
-    
 }
 impl MMU {
     /// initializes memory sections
     pub fn new() -> MMU {
-        MMU { }
+        MMU {}
     }
 
     /// TODO: reads a byte from the memory
@@ -24,4 +23,3 @@ impl MMU {
         0xF0F0
     }
 }
-

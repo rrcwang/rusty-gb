@@ -47,7 +47,7 @@ pub enum Flag {
 
 impl Registers {
     pub fn new() -> Registers {
-        Registers { 
+        Registers {
             // TODO: initial register values from AntonioND/giibiiadvance, §3.2
             a: 0,
             f: 0,
@@ -182,7 +182,7 @@ impl Registers {
             Flag::H => 0b_0010_0000,
             Flag::C => 0b_0001_0000,
         };
-        
+
         match value {
             true => self.f |= mask,
             false => self.f &= !mask,
@@ -281,7 +281,7 @@ mod test {
         for reg in registers_8b {
             registers.set_8b_reg(reg, 0x1)
         }
-        
+
         let registers_8b = common::all_registers_8b();
 
         for reg in registers_8b {
@@ -320,7 +320,7 @@ mod test {
         for reg in registers_16b {
             registers.set_16b_reg(reg, 0xF0F0u16)
         }
-        
+
         let registers_16b = common::all_registers_16b();
 
         for reg in registers_16b {
@@ -354,12 +354,16 @@ mod test {
             registers.set_8b_reg(reg_8b, 0xF0u8);
         }
 
-
-        for reg_16b in vec![Register16b::AF, Register16b::BC, Register16b::DE, Register16b::HL] {
+        for reg_16b in vec![
+            Register16b::AF,
+            Register16b::BC,
+            Register16b::DE,
+            Register16b::HL,
+        ] {
             // AF, BC, DE, HL
             assert_eq!(0xF0F0u16, registers.get_16b_reg(reg_16b));
         }
-        
+
         for reg_16b in vec![Register16b::SP, Register16b::PC] {
             // SP, PC
             assert_eq!(0, registers.get_16b_reg(reg_16b));
@@ -386,18 +390,18 @@ mod test {
         for flag in flags {
             registers.set_flag(flag, true);
         }
-        
+
         let flags = common::all_flags();
         for flag in flags {
             assert_eq!(true, registers.get_flag(flag));
         }
-        
+
         let flags = common::all_flags();
         // clear all flags and check for false
         for flag in flags {
             registers.set_flag(flag, false);
         }
-        
+
         let flags = common::all_flags();
         for flag in flags {
             assert_eq!(false, registers.get_flag(flag));
@@ -405,25 +409,24 @@ mod test {
     }
 
     #[test]
-    #[ignore]   // time consuming test
+    #[ignore] // time consuming test
     fn benchmark_16b_write() {
-        
         use std::time::Instant;
 
         let mut regs = Registers::new();
 
         let n_test: u32 = 100000000;
-    
+
         let now = Instant::now();
-    
+
         for _ in 0..n_test {
             regs.set_16b_reg(Register16b::AF, 0xFFFF);
             regs.set_16b_reg(Register16b::AF, 0x0000);
         }
-    
+
         println!("u16 set time: {} ms", now.elapsed().as_millis());
-        // on average, about 4.0s. 
-        // unsafe, raw pointer access is about 3.6s. 
-        // maybe change implementation for performance if necessary?? 
+        // on average, about 4.0s.
+        // unsafe, raw pointer access is about 3.6s.
+        // maybe change implementation for performance if necessary??
     }
 }
