@@ -17,7 +17,7 @@ pub struct Registers {
     pub sp: u16,
     pub pc: u16,
 }
-
+#[derive(Debug, Copy, Clone)]
 pub enum Register8b {
     A,
     F,
@@ -29,6 +29,7 @@ pub enum Register8b {
     L,
 }
 
+#[derive(Debug, Copy, Clone)]
 pub enum Register16b {
     AF,
     BC,
@@ -38,6 +39,7 @@ pub enum Register16b {
     PC, // program counter
 }
 
+#[derive(Copy, Clone)]
 pub enum Flag {
     Z, // zero flag
     N, // add/sub
@@ -237,12 +239,13 @@ impl fmt::Display for Registers {
 ///
 /// NOTE: test functions named as `register_{TYPE}_{TEST}...`, where `TEST` refers to the functionality/cases tested for
 #[cfg(test)]
-mod test {
+pub mod test {
     use super::*;
 
     /// test helper module
-    mod common {
+    pub mod common {
         use super::super::*;
+
         pub fn all_registers_8b() -> Vec<Register8b> {
             vec![
                 Register8b::A,

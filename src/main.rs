@@ -3,7 +3,6 @@ mod memory;
 mod registers;
 
 fn main() {
-    
     let x: u16 = 0x02;
     let y: u16 = 0x03;
     let r = x.wrapping_sub(y);

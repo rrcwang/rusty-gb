@@ -24,10 +24,9 @@ impl Cpu {
         }
     }
 
-    // TODO: 
+    // TODO:
     //  * add carry flag for ADC, SBC instructions
-    //  * write tests for SUB  
-
+    //  * write tests for SUB
 
     /// Adds two byte length values and sets the appropriate flags in the F register for CPU instructions
     ///
@@ -43,7 +42,7 @@ impl Cpu {
             true => 1,
             false => 0,
         };
-        
+
         let x = x as u16;
         let y = y as u16 + c;
 
@@ -72,18 +71,23 @@ impl Cpu {
     ///
     ///
     fn alu_sub_bytes(&mut self, x: u8, y: u8, use_carry: bool) -> u8 {
+        let c: u16 = match use_carry & self.registers.get_flag(Flag::C) {
+            true => 1,
+            false => 0,
+        };
+
         let x = x as u16;
-        let y = y as u16;
+        let y = y as u16 + c;
         let result = x.wrapping_sub(y);
 
         // set flags
         // subtraction
         self.registers.set_flag(Flag::N, true);
         // half-carry
-        self.registers.set_flag(Flag::H, (y & 0x0F) > (x & 0x0F));  // x ^ (!y) ^ result ??? off-by-one
-        // carry
-        self.registers.set_flag(Flag::C, (result & 0x100) != 0);    // two's complement subtraction. should work?
-        // cast to 8-bit
+        self.registers.set_flag(Flag::H, (y & 0x0F) > (x & 0x0F)); // x ^ (!y) ^ result ??? off-by-one
+                                                                   // carry
+        self.registers.set_flag(Flag::C, (result & 0x100) != 0); // two's complement subtraction. should work?
+                                                                 // cast to 8-bit
         let result = result as u8;
         // zero
         self.registers.set_flag(Flag::Z, result == 0);
@@ -97,9 +101,15 @@ impl Cpu {
     pub fn fetch_and_execute(&mut self) -> u8 {
         // TODO: fetch OP code from ROM
         // 0. fetch next instruction, pointed to by PC
-        let instruction: u8 = 0x00;
+        // let instruction: u8 = 0x00;
+        let instruction: u8 = self.mmu.read_byte(self.registers.pc);
+
+        println!("CPU got op code 0x{:X} at PC: {}", instruction, self.registers.pc);
+
         // increment past current opcode
         self.registers.pc += 1;
+
+        
 
         // 1. decode and execute instruction
         //      * do thing
@@ -109,9 +119,9 @@ impl Cpu {
         //  op-codes documented here: https://gbdev.io/gb-opcodes/optables/
         match instruction {
             // 0x00 -> 0x0F
-            0x00 => 4, // NOP     | 0x00          | do nothing for 1 cycle
+            0x00 => 4, // NOP   | 0x00          | do nothing for 1 cycle
             0x01 => {
-                // LD BC, d16     | 0x01 0xIIII   | load into BC, 0xIIII
+                // LD BC, d16   | 0x01 0xIIII   | load into BC, 0xIIII
                 let value: u16 = self.mmu.read_word(self.registers.pc); // read data from program
                 self.registers.pc += 2; // length of operands
 
@@ -120,7 +130,7 @@ impl Cpu {
                 12 // program takes 12 T-states
             }
             0x02 => {
-                // LD (BC), A     | 0x02          | load byte stored at memory location pointed to by BC into A
+                // LD (BC), A   | 0x02          | load byte stored at memory location pointed to by BC into A
                 let value: u8 = self
                     .mmu
                     .read_byte(self.registers.get_16b_reg(Register16b::BC));
@@ -130,7 +140,7 @@ impl Cpu {
                 8
             }
             0x03 => {
-                // INC BC
+                // INC BC      | 0x03            | increment BC register by 1
                 // TODO: implement ALU and addition behaviour
                 self.unimpl_instr();
 
@@ -171,7 +181,7 @@ impl Cpu {
             0x41 => {
                 // LD B, C
                 let value = self.registers.get_8b_reg(Register8b::C);
-
+                
                 self.registers.set_8b_reg(Register8b::B, value);
 
                 4
@@ -253,4 +263,4 @@ impl Cpu {
 }
 
 #[cfg(test)]
-mod test;
+mod tests;
