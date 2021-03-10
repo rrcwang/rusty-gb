@@ -260,9 +260,9 @@ fn cpu_alu_sub_bytes_with_carry() {
     }
 }
 
-// This is an integration test... requies MMU. not sure where to move?? 
+// This is an integration test... requies MMU. not sure where to move??
 #[test]
-fn cpu_ld_8b_register_to_8b_register_instructions() {
+fn cpu_ld_r8_r8_instructions() {
     let mut cpu = Cpu::new();
 
     let registers_8b = vec![
@@ -275,7 +275,7 @@ fn cpu_ld_8b_register_to_8b_register_instructions() {
         Register8b::A,
     ];
 
-    // generate all test cases
+    // generate all LD test cases
     let mut test_cases: Vec<(u8, Register8b, Register8b)> = Vec::new();
     let mut op_code: u8 = 0x40;
     let mut ops: Vec<u8> = Vec::new();
@@ -294,27 +294,28 @@ fn cpu_ld_8b_register_to_8b_register_instructions() {
             }
         }
     }
+
     // init test rom and register verification variables
     //  test rom consists of all LD X, X ops in order, where X is a 8b register, excluding F
     let mut test_pc = 0x00;
     cpu.registers.pc = 0x00;
+    cpu.mmu.load_rom(ops); // NOTE: unstable API for rom loading! subject to change
 
-    cpu.mmu.load_rom(ops); // unstable API for rom load
-
-    let value: u8 = 0xF0;
+    let test_value: u8 = 0x0F;
     for (op, reg_to, reg_from) in test_cases {
         // set from_reg to desired value
-        cpu.registers.set_8b_reg(reg_from, value);
+        cpu.registers.set_8b_reg(reg_from, test_value);
         // call CPU to load register from one to the other
         cpu.fetch_and_execute();
         // check that to_reg now has the same value
         assert_eq!(
-            value,
+            test_value,
             cpu.registers.get_8b_reg(reg_to),
-            "OP failed: 0x{:X}. From {:?} to {:?}",
+            "OP failed: 0x{:X}. From {:?} to {:?}.\n Registers dump: {}",
             op,
             reg_from,
-            reg_to
+            reg_to,
+            cpu.registers
         );
         // check that pc has been correctly incremented
         test_pc += 1;
@@ -324,7 +325,6 @@ fn cpu_ld_8b_register_to_8b_register_instructions() {
         cpu.registers.set_8b_reg(reg_to, 0);
         cpu.registers.set_8b_reg(reg_from, 0);
     }
-
 }
 
 #[test]

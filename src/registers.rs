@@ -17,7 +17,7 @@ pub struct Registers {
     pub sp: u16,
     pub pc: u16,
 }
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Register8b {
     A,
     F,
@@ -39,7 +39,7 @@ pub enum Register16b {
     PC, // program counter
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum Flag {
     Z, // zero flag
     N, // add/sub

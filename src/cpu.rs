@@ -10,9 +10,34 @@ pub struct Cpu {
     halted: bool,
     interrupt_master_enable: bool, // IME
     // memory
-    mmu: memory::MMU,
+    mmu: memory::Mmu,
 }
 
+
+// TODO:
+    // ALU
+    //  * add carry flag for ALU add, sub           -- DONE, tested
+    //  * write tests for ALU sub                   -- DONE, tested
+    //  * refactor?? ALU to separate file?
+    // Instructions
+    //  Data
+    //      * LD A, R8
+    //      * LD with pointers
+    //      * INC R8, INC R16
+    //          ...
+    //  * Arithmetic 
+    //      * ADD, ADC  R8
+    //      * SUB, SBC  R8
+    //          ...
+    //  * Logical
+    //      * AND
+    //      * XOR
+    //      * OR
+    //      * CP - comparison with A
+    //          ... flag, A
+    //  * Misc / control
+    //      * NOP -- DONE
+    //          ...
 impl Cpu {
     pub fn new() -> Cpu {
         Cpu {
@@ -20,13 +45,9 @@ impl Cpu {
             registers: registers::Registers::new(),
             halted: false,
             interrupt_master_enable: false,
-            mmu: memory::MMU::new(),
+            mmu: memory::Mmu::new(),
         }
     }
-
-    // TODO:
-    //  * add carry flag for ADC, SBC instructions
-    //  * write tests for SUB
 
     /// Adds two byte length values and sets the appropriate flags in the F register for CPU instructions
     ///
@@ -42,9 +63,8 @@ impl Cpu {
             true => 1,
             false => 0,
         };
-
         let x = x as u16;
-        let y = y as u16 + c;
+        let y = (y as u16).wrapping_add(c);
 
         let result = x.wrapping_add(y);
 
@@ -75,9 +95,9 @@ impl Cpu {
             true => 1,
             false => 0,
         };
-
         let x = x as u16;
-        let y = y as u16 + c;
+        let y = (y as u16).wrapping_add(c);
+
         let result = x.wrapping_sub(y);
 
         // set flags
@@ -95,6 +115,15 @@ impl Cpu {
         result // return 8-bit
     }
 
+    /// Loads the value from one 8-bit register to another. Used for LD R8, R8 instructions.
+    fn ld_regs_8b(&mut self, reg_to: Register8b, reg_from: Register8b) {
+        /* if reg_from == reg_to { // ignore for now, assuming is not called for same reg instructions
+            return
+        } */ 
+        let value = self.registers.get_8b_reg(reg_from);
+        self.registers.set_8b_reg(reg_to, value);
+    }
+
     /// returns the duration taken by the instruction in clock ticks taken
     /// one CPU cycle == "M-cycle"
     ///     => four clock ticks == four "T-states"
@@ -104,12 +133,14 @@ impl Cpu {
         // let instruction: u8 = 0x00;
         let instruction: u8 = self.mmu.read_byte(self.registers.pc);
 
-        println!("CPU got op code 0x{:X} at PC: {}", instruction, self.registers.pc);
+        // DEBUG:
+        println!(
+            "CPU executing 0x{:X} at PC: {}",
+            instruction, self.registers.pc
+        );
 
         // increment past current opcode
         self.registers.pc += 1;
-
-        
 
         // 1. decode and execute instruction
         //      * do thing
@@ -180,67 +211,286 @@ impl Cpu {
             }
             0x41 => {
                 // LD B, C
-                let value = self.registers.get_8b_reg(Register8b::C);
-                
-                self.registers.set_8b_reg(Register8b::B, value);
-
+                self.ld_regs_8b(Register8b::B, Register8b::C);
                 4
             }
             0x42 => {
                 // LD B, D
-                let value = self.registers.get_8b_reg(Register8b::D);
-
-                self.registers.set_8b_reg(Register8b::B, value);
-
+                self.ld_regs_8b(Register8b::B, Register8b::D);
                 4
             }
             0x43 => {
                 // LD B, E
-                let value = self.registers.get_8b_reg(Register8b::E);
-
-                self.registers.set_8b_reg(Register8b::B, value);
+                self.ld_regs_8b(Register8b::B, Register8b::E);
 
                 4
             }
             0x44 => {
                 // LD B, H
-                let value = self.registers.get_8b_reg(Register8b::H);
-
-                self.registers.set_8b_reg(Register8b::B, value);
-
+                self.ld_regs_8b(Register8b::B, Register8b::H);
                 4
             }
             0x45 => {
                 // LD B, L
-                let value = self.registers.get_8b_reg(Register8b::L);
-
-                self.registers.set_8b_reg(Register8b::B, value);
-
+                self.ld_regs_8b(Register8b::B, Register8b::L);
                 4
             }
             0x46 => {
+                // TODO
                 // LD B, (HL)
                 self.unimpl_instr();
-
                 8
             }
             0x47 => {
                 // LD B, A
-                let value = self.registers.get_8b_reg(Register8b::A);
-
-                self.registers.set_8b_reg(Register8b::B, value);
-
+                self.ld_regs_8b(Register8b::B, Register8b::A);
+                4
+            }
+            0x48 => {
+                // LD C, B
+                self.ld_regs_8b(Register8b::C, Register8b::B);
+                4
+            }
+            0x49 => {
+                // LD C, C
+                4
+            }
+            0x4A => {
+                // LD C, D
+                self.ld_regs_8b(Register8b::C, Register8b::D);
+                4
+            }
+            0x4B => {
+                // LD C, E
+                self.ld_regs_8b(Register8b::C, Register8b::E);
+                4
+            }
+            0x4C => {
+                // LD C, H
+                self.ld_regs_8b(Register8b::C, Register8b::H);
+                4
+            }
+            0x4D => {
+                // LD C, L
+                self.ld_regs_8b(Register8b::C, Register8b::L);
+                4
+            }
+            0x4E => {
+                // TODO
+                // LD C, (HL)
+                self.unimpl_instr();
+            }
+            0x4F => {
+                // LD C, A
+                self.ld_regs_8b(Register8b::C, Register8b::A);
                 4
             }
             // 0x50 -> 0x5F
+            0x50 => {
+                // LD D, B    | does nothing
+                self.ld_regs_8b(Register8b::D, Register8b::B);
+                4
+            }
+            0x51 => {
+                // LD D, C
+                self.ld_regs_8b(Register8b::D, Register8b::C);
+                4
+            }
+            0x52 => {
+                // LD D, D
+                4
+            }
+            0x53 => {
+                // LD D, E
+                self.ld_regs_8b(Register8b::D, Register8b::E);
+                4
+            }
+            0x54 => {
+                // LD D, H
+                self.ld_regs_8b(Register8b::D, Register8b::H);
+                4
+            }
+            0x55 => {
+                // LD D, L
+                self.ld_regs_8b(Register8b::D, Register8b::L);
+                4
+            }
+            0x56 => {
+                // TODO
+                // LD D, (HL)
+                self.unimpl_instr();
+
+                8
+            }
+            0x57 => {
+                // LD D, A
+                self.ld_regs_8b(Register8b::D, Register8b::A);
+                4
+            }
+            0x58 => {
+                // LD E, B
+                self.ld_regs_8b(Register8b::E, Register8b::B);
+                4
+            }
+            0x59 => {
+                // LD E, C
+                self.ld_regs_8b(Register8b::E, Register8b::C);
+                4
+            }
+            0x5A => {
+                // LD E, D
+                self.ld_regs_8b(Register8b::E, Register8b::D);
+                4
+            }
+            0x5B => {
+                // LD E, E
+                4
+            }
+            0x5C => {
+                // LD E, H
+                self.ld_regs_8b(Register8b::E, Register8b::H);
+                4
+            }
+            0x5D => {
+                // LD E, L
+                self.ld_regs_8b(Register8b::E, Register8b::L);
+                4
+            }
+            0x5E => { // TODO
+                // LD E, (HL)
+                self.unimpl_instr();
+            }
+            0x5F => {
+                // LD E, A
+                self.ld_regs_8b(Register8b::E, Register8b::A);
+                4
+            }
             // 0x60 -> 0x6F
+            0x60 => {
+                // LD H, B    | does nothing
+                self.ld_regs_8b(Register8b::H, Register8b::B);
+                4
+            }
+            0x61 => {
+                // LD H, C
+                self.ld_regs_8b(Register8b::H, Register8b::C);
+                4
+            }
+            0x62 => {
+                // LD H, D
+                self.ld_regs_8b(Register8b::H, Register8b::D);
+                4
+            }
+            0x63 => {
+                // LD H, E
+                self.ld_regs_8b(Register8b::H, Register8b::E);
+                4
+            }
+            0x64 => {
+                // LD H, H
+                4
+            }
+            0x65 => {
+                // LD H, L
+                self.ld_regs_8b(Register8b::H, Register8b::L);
+                4
+            }
+            0x66 => {
+                // TODO
+                // LD H, (HL)
+                self.unimpl_instr();
+
+                8
+            }
+            0x67 => {
+                // LD H, A
+                self.ld_regs_8b(Register8b::H, Register8b::A);
+                4
+            }
+            0x68 => {
+                // LD L, B
+                self.ld_regs_8b(Register8b::L, Register8b::B);
+                4
+            }
+            0x69 => {
+                // LD L, C
+                self.ld_regs_8b(Register8b::L, Register8b::C);
+                4
+            }
+            0x6A => {
+                // LD L, D
+                self.ld_regs_8b(Register8b::L, Register8b::D);
+                4
+            }
+            0x6B => {
+                // LD L, E
+                self.ld_regs_8b(Register8b::L, Register8b::E);
+                4
+            }
+            0x6C => {
+                // LD L, H
+                self.ld_regs_8b(Register8b::L, Register8b::H);
+                4
+            }
+            0x6D => {
+                // LD L, L
+                4
+            }
+            0x6E => { // TODO
+                // LD L, (HL)
+                self.unimpl_instr();
+            }
+            0x6F => {
+                // LD L, A
+                self.ld_regs_8b(Register8b::L, Register8b::A);
+                4
+            }
             // 0x70 -> 0x7F
+            0x78 => {
+                // LD A, B
+                self.ld_regs_8b(Register8b::A, Register8b::B);
+                4
+            }
+            0x79 => {
+                // LD A, C
+                self.ld_regs_8b(Register8b::A, Register8b::C);
+                4
+            }
+            0x7A => {
+                // LD A, D
+                self.ld_regs_8b(Register8b::A, Register8b::D);
+                4
+            }
+            0x7B => {
+                // LD A, E
+                self.ld_regs_8b(Register8b::A, Register8b::E);
+                4
+            }
+            0x7C => {
+                // LD A, H
+                self.ld_regs_8b(Register8b::A, Register8b::H);
+                4
+            }
+            0x7D => {
+                // LD A, L
+                self.ld_regs_8b(Register8b::A, Register8b::L);
+                4
+            }
+            0x7E => { // TODO
+                // LD A, (HL)
+                self.unimpl_instr();
+                8
+            }
+            0x7F => {
+                // LD A, A
+                4
+            }
             // 0x80 -> 0x8F
             0x80 => {
                 // ADD A, B
+                self.unimpl_instr();
 
                 self.registers.set_flag(Flag::N, false); // subtraction flag
-
                 4
             }
             // 0x90 -> 0x9F
