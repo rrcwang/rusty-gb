@@ -13,31 +13,30 @@ pub struct Cpu {
     mmu: memory::Mmu,
 }
 
-
 // TODO:
-    // ALU
-    //  * add carry flag for ALU add, sub           -- DONE, tested
-    //  * write tests for ALU sub                   -- DONE, tested
-    //  * refactor?? ALU to separate file?
-    // Instructions
-    //  Data
-    //      * LD A, R8
-    //      * LD with pointers
-    //      * INC R8, INC R16
-    //          ...
-    //  * Arithmetic 
-    //      * ADD, ADC  R8
-    //      * SUB, SBC  R8
-    //          ...
-    //  * Logical
-    //      * AND
-    //      * XOR
-    //      * OR
-    //      * CP - comparison with A
-    //          ... flag, A
-    //  * Misc / control
-    //      * NOP -- DONE
-    //          ...
+// ALU
+//  * add carry flag for ALU add, sub           -- DONE, tested
+//  * write tests for ALU sub                   -- DONE, tested
+//  * refactor?? ALU to separate file?
+// Instructions
+//  Data
+//      * LD A, R8
+//      * LD with pointers
+//      * INC R8, INC R16
+//          ...
+//  * Arithmetic
+//      * ADD, ADC  R8
+//      * SUB, SBC  R8
+//          ...
+//  * Logical
+//      * AND
+//      * XOR
+//      * OR
+//      * CP - comparison with A
+//          ... flag, A
+//  * Misc / control
+//      * NOP -- DONE
+//          ...
 impl Cpu {
     pub fn new() -> Cpu {
         Cpu {
@@ -119,7 +118,7 @@ impl Cpu {
     fn ld_regs_8b(&mut self, reg_to: Register8b, reg_from: Register8b) {
         /* if reg_from == reg_to { // ignore for now, assuming is not called for same reg instructions
             return
-        } */ 
+        } */
         let value = self.registers.get_8b_reg(reg_from);
         self.registers.set_8b_reg(reg_to, value);
     }
@@ -356,7 +355,8 @@ impl Cpu {
                 self.ld_regs_8b(Register8b::E, Register8b::L);
                 4
             }
-            0x5E => { // TODO
+            0x5E => {
+                // TODO
                 // LD E, (HL)
                 self.unimpl_instr();
             }
@@ -436,7 +436,8 @@ impl Cpu {
                 // LD L, L
                 4
             }
-            0x6E => { // TODO
+            0x6E => {
+                // TODO
                 // LD L, (HL)
                 self.unimpl_instr();
             }
@@ -476,7 +477,8 @@ impl Cpu {
                 self.ld_regs_8b(Register8b::A, Register8b::L);
                 4
             }
-            0x7E => { // TODO
+            0x7E => {
+                // TODO
                 // LD A, (HL)
                 self.unimpl_instr();
                 8
