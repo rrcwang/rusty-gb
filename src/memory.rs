@@ -73,17 +73,34 @@ impl Mmu {
         }
     }
 
-    /// TODO: reads a word (2 bytes) from the memory
+    /// TODO: reads a word (2 bytes) from the memory. Needs test
     pub fn read_word(&self, address: u16) -> u16 {
-        0xF0F0
+        let low = self.read_byte(address);
+        let high = self.read_byte(address + 1) as u16;
+
+        high << 8 + low
+    }
+
+    // TODO:
+    pub fn write_byte(&mut self, address: u16, value: u8) {
+        unimplemented!("Memory write not yet implemented!")
+    }
+
+    // TODO:
+    pub fn write_word(&mut self, address: u16, value: u16) {
+        self.write_byte(address, (value & 0xFF) as u8);
+        self.write_byte(address + 1, (value >> 8) as u8);
     }
 
     /// TODO: load game program to ROM
     pub fn load_rom(&mut self, data: Vec<u8>) -> () {
         for (i, instr) in data.iter().enumerate() {
             if let Err(_) = self.mbc.write_byte(i as u16, *instr) {
-                panic!("ROM loading error! Written to ROM address{}", i);
+                panic!("ROM loading error! Illegal write to ROM address 0x{:X}", i);
             }
         }
     }
 }
+
+#[cfg(test)]
+mod tests;

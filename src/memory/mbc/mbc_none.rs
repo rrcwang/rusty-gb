@@ -1,9 +1,9 @@
 //! No MBC in cartrige. This provides direct rom access to ROM addresses
 //! 0 through 0x7FFF for a total of 8 KB.
 
-// TODO: 
+// TODO:
 //  * tests for MbcNone reading and writing. Need to reference documentation
-//  * MBC RAM 
+//  * MBC RAM
 
 use super::*;
 
@@ -48,6 +48,4 @@ impl MemoryBankController for MbcNone {
 }
 
 #[cfg(test)]
-mod tests {
-    
-}
+mod tests {}

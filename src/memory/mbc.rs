@@ -8,9 +8,9 @@ pub use mbc_none::MbcNone;
 /// Trait for memory bank controllers (MBCs). All MBCs should have the same interface provided through this trait.
 ///     Takes
 pub trait MemoryBankController {
-    /// A
+    ///
     fn read_byte(&self, address: u16) -> Result<u8, MBCError>;
-    /// A
+    ///
     fn write_byte(&mut self, address: u16, value: u8) -> Result<(), MBCError>;
 }
 
