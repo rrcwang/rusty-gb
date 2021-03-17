@@ -15,13 +15,16 @@ mod common {
     ///
     /// * `Result::Err(s)` - where `s` is a string describing which flag failed. If multiple failed
     ///                         then only returns the first.
-    pub fn assert_flags(cpu: &Cpu, values: [bool; 4]) -> Result<(), &str> {
-        let flags = vec![Flag::Z, Flag::N, Flag::H, Flag::C];
-        let flags_str = vec!["Z (zero)", "N (subtraction)", "H (half-carry)", "C (carry)"];
+    pub fn assert_flags(cpu: &Cpu, values: Vec<bool>, flags: Vec<Flag>) -> Result<(), Flag> {
+        let mut flag_strs: Vec<String> = Vec::new();
+
+        for f in flags.clone() {
+            flag_strs.push(format!("{:?}", f));
+        }
 
         for (i, flag) in flags.into_iter().enumerate() {
             if cpu.registers.get_flag(flag) != values[i] {
-                return Result::Err(flags_str[i]);
+                return Result::Err(flag);
             }
         }
 
@@ -36,14 +39,17 @@ mod common {
     /// * `values` - Vector specifying values of flags in order of Flag::{Z, N, H, C}
     /// * `operands` - Tuple of two `u8`s of the binary operation being tested for
     pub fn assert_flags_binop(cpu: &Cpu, values: [bool; 4], operands: (u8, u8)) {
-        let result = assert_flags(&cpu, values);
+        let values = values.to_vec();
 
-        if let Err(e) = result {
+        let flags = vec![Flag::Z, Flag::N, Flag::H, Flag::C];
+        let result = assert_flags(&cpu, values, flags);
+
+        if let Err(f) = result {
             let a = operands.0;
             let b = operands.1;
             panic!(
-                "Flag assertion failed for {} with operands (0x{:X}, 0x{:X})",
-                e, a, b
+                "Flag assertion failed for {:?} with operands (0x{:X}, 0x{:X})",
+                f, a, b
             );
         }
     }
@@ -261,6 +267,7 @@ fn cpu_alu_sub_bytes_with_carry() {
 }
 
 // This is an integration test... requies MMU. not sure where to move??
+// This works for now. Consider rewriting this using "Cpu::execute_instr() if Mmu interface changes".
 #[test]
 fn cpu_ld_r8_r8_instructions() {
     let mut cpu = Cpu::new();
@@ -304,13 +311,13 @@ fn cpu_ld_r8_r8_instructions() {
     let test_value: u8 = 0x0F;
     for (op, reg_to, reg_from) in test_cases {
         // set from_reg to desired value
-        cpu.registers.set_8b_reg(reg_from, test_value);
+        cpu.registers.set_r8(reg_from, test_value);
         // call CPU to load register from one to the other
         cpu.fetch_and_execute();
         // check that to_reg now has the same value
         assert_eq!(
             test_value,
-            cpu.registers.get_8b_reg(reg_to),
+            cpu.registers.get_r8(reg_to),
             "OP failed: 0x{:X}. From {:?} to {:?}.\n Registers dump: {}",
             op,
             reg_from,
@@ -322,10 +329,67 @@ fn cpu_ld_r8_r8_instructions() {
         assert_eq!(test_pc, cpu.registers.pc);
 
         // clear registers
-        cpu.registers.set_8b_reg(reg_to, 0);
-        cpu.registers.set_8b_reg(reg_from, 0);
+        cpu.registers.set_r8(reg_to, 0);
+        cpu.registers.set_r8(reg_from, 0);
     }
 }
 
 #[test]
-fn cpu_ld_word_instructions() {}
+fn cpu_ld_word_instructions() {
+    todo!("Not implemented yet!");
+}
+
+#[test]
+fn cpu_alu_inc_byte() {
+    let mut cpu = Cpu::new();
+
+    let test_cases = vec![
+        //      Z      N      H
+        (0xFE, [false, false, false]),
+    ];
+
+    let flags = vec![Flag::Z, Flag::N, Flag::H];
+    for (a, flag_vals) in test_cases {
+        let value = cpu.alu_inc_byte(a);
+
+        assert_eq!(value, a.wrapping_add(1));
+
+        // check flag assertion
+        let result = common::assert_flags(&cpu, flag_vals.to_vec(), flags.clone());
+        if let Err(f) = result {
+            panic!("Flag assertion failed for {:?} with value {}.", f, a);
+        }
+    }
+}
+
+#[test]
+fn cpu_alu_dec_byte() {
+    let mut cpu = Cpu::new();
+
+    let test_cases = vec![
+        //        Z      N     H
+        (0xFF, [false, true, false]),
+        (0x00, [false, true, true]),
+        (0x9F, [false, true, false]),
+        (0x13, [false, true, false]),
+        (0x01, [true, true, false]),
+        (0x0F, [false, true, false]),
+        (0x10, [false, true, true]),
+    ];
+
+    let flags = vec![Flag::Z, Flag::N, Flag::H];
+    for (a, flag_vals) in test_cases {
+        let value = cpu.alu_dec_byte(a);
+
+        assert_eq!(value, a.wrapping_sub(1));
+
+        // check flag assertion
+        let result = common::assert_flags(&cpu, flag_vals.to_vec(), flags.clone());
+        if let Err(f) = result {
+            panic!("Flag assertion failed for {:?} with value {}.", f, a);
+        }
+    }
+}
+
+#[test]
+fn cpu_alu_add_words() {}
