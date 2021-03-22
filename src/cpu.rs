@@ -97,19 +97,47 @@ impl Cpu {
         result // return 8-bit
     }
 
-    /// TOTEST
+    /// Adds two unsigned words, and sets the appropriate flags.
+    ///
+    /// Implemented as chaining two byte lenght adds together.
     /// Used in ADD HL, r16 instructions
+    ///
+    /// # Arguments
+    /// * `(x, y)` - `u16`s
+    ///
+    /// # Output
+    /// * Result of `x + y`
+    ///
+    /// # Flags
+    /// * `N = 0`
+    /// * `H` if bit 15 overflows
+    /// * `C` if bit 11 overflows
     fn alu_add_words(&mut self, x: u16, y: u16) -> u16 {
         let (x_high, x_low) = word_to_bytes(x);
         let (y_high, y_low) = word_to_bytes(y);
 
+        // need to leave z untouched, but alu_add_bytes modifies Z
+        let z = self.registers.get_flag(Flag::Z);
+
         let low = self.alu_add_bytes(x_low, y_low, false);
         let high = self.alu_add_bytes(x_high, y_high, true);
+
+        self.registers.set_flag(Flag::Z, z);
 
         bytes_to_word(high, low)
     }
 
-    /// TOTEST
+    /// Increments the value of `x` by one.
+    ///
+    /// Wraps around if saturation is reached.
+    ///
+    /// # Argument
+    /// * `x` - `u8` value
+    ///
+    /// # Flags
+    /// * `Z` if result is 0 (equivalent to C)
+    /// * `N = 0`
+    /// * `H` if bit 3 overflows
     fn alu_inc_byte(&mut self, x: u8) -> u8 {
         let result = x.wrapping_add(1);
 
@@ -120,7 +148,17 @@ impl Cpu {
         result
     }
 
-    /// TOTEST
+    /// Decrements the value of `x` by one.
+    ///
+    /// Wraps around if saturation is reached.
+    ///
+    /// # Argument
+    /// * `x` - `u8` value
+    ///
+    /// # Flags
+    /// * `Z` if result is 0
+    /// * `N = 1`
+    /// * `H` if bit 3 borrows
     fn alu_dec_byte(&mut self, x: u8) -> u8 {
         let result = x.wrapping_sub(1);
 
@@ -130,6 +168,50 @@ impl Cpu {
         // half-carry condition, borrow from 4->3
         // 0xN0 - 0x01 == 0x(N-1)F <=> 0xN0 & 0x0F == 0
         result
+    }
+
+    fn alu_and_a(&mut self, y: u8) {
+        let a = self.registers.get_r8(Register8b::A);
+
+        let result = a & y;
+
+        self.registers.set_flag(Flag::Z, result == 0);
+        self.registers.set_flag(Flag::N, false);
+        self.registers.set_flag(Flag::H, true);
+        self.registers.set_flag(Flag::C, false);
+
+        self.registers.set_r8(Register8b::A, result);
+    }
+
+    fn alu_xor_a(&mut self, y: u8) {
+        let a = self.registers.get_r8(Register8b::A);
+
+        let result = a ^ y;
+
+        self.registers.set_flag(Flag::Z, result == 0);
+        self.registers.set_flag(Flag::N, false);
+        self.registers.set_flag(Flag::H, false);
+        self.registers.set_flag(Flag::C, false);
+
+        self.registers.set_r8(Register8b::A, result);
+    }
+
+    fn alu_or_a(&mut self, y: u8) {
+        let a = self.registers.get_r8(Register8b::A);
+
+        let result = a | y;
+
+        self.registers.set_flag(Flag::Z, result == 0);
+        self.registers.set_flag(Flag::N, false);
+        self.registers.set_flag(Flag::H, false);
+        self.registers.set_flag(Flag::C, false);
+
+        self.registers.set_r8(Register8b::A, result);
+    }
+
+    fn alu_cp_a(&mut self, y: u8) {
+        let a = self.registers.get_r8(Register8b::A);
+        self.alu_sub_bytes(a, y, false);
     }
 
     /// Loads the value from one 8-bit register to another. Used for LD R8, R8 instructions.
@@ -187,7 +269,7 @@ impl Cpu {
                 // TOTEST
                 // LD BC, d16   | 0x01 0xNNNN   | load into BC, 0xNNNN
                 let value: u16 = self.mmu.read_word(self.registers.pc); // read data from program
-                self.registers.pc += 2; // length of operands
+                self.registers.pc = self.registers.pc.wrapping_add(2); // length of operands
                 self.registers.set_r16(Register16b::BC, value);
                 12 // program takes 12 T-states
             }
@@ -208,18 +290,16 @@ impl Cpu {
                 8
             }
             0x04 => {
-                // TOTEST
                 // INC B
                 let mut value = self.registers.get_r8(Register8b::B);
-                value = value.wrapping_add(1);
+                value = self.alu_inc_byte(value);
                 self.registers.set_r8(Register8b::B, value);
                 4
             }
             0x05 => {
-                // TOTEST
                 // DEC B
                 let mut value = self.registers.get_r8(Register8b::B);
-                value = value.wrapping_sub(1);
+                value = self.alu_dec_byte(value);
                 self.registers.set_r8(Register8b::B, value);
                 4
             }
@@ -227,7 +307,7 @@ impl Cpu {
                 // TOTEST
                 // LD B, d8
                 let value: u8 = self.mmu.read_byte(self.registers.pc);
-                self.registers.pc += 1;
+                self.registers.pc = self.registers.pc.wrapping_add(1);
                 self.registers.set_r8(Register8b::B, value);
                 8
             }
@@ -235,7 +315,6 @@ impl Cpu {
                 // TODO
                 // RLCA
                 self.unimpl_instr();
-
                 self.registers.set_r8(Register8b::F, 0b_0000_0000);
                 // TODO: set carry flag accordingly
                 4
@@ -244,17 +323,17 @@ impl Cpu {
                 // TOTEST
                 // LD (a16), SP | 0x03 0xNNNN    | write stack pointer, u16 to memory address in operand
                 let address = self.mmu.read_word(self.registers.pc);
-                self.registers.pc += 2;
+                self.registers.pc = self.registers.pc.wrapping_add(2);
                 self.mmu.write_word(address, self.registers.sp);
                 20
             }
             0x09 => {
-                // TODO
+                // TOTEST
                 // ADD HL, BC   | 0x09           | add BC to HL
-                self.unimpl_instr();
                 let bc = self.registers.get_r16(Register16b::BC);
                 let hl = self.registers.get_r16(Register16b::HL);
-                self.alu_add_words(bc, hl);
+                let result = self.alu_add_words(bc, hl);
+                self.registers.set_r16(Register16b::HL, result);
                 8
             }
             0x0A => {
@@ -266,31 +345,172 @@ impl Cpu {
                 8
             }
             0x0B => {
-                // TODO
+                // TOTEST
                 // DEC BC
-                self.unimpl_instr();
                 let value = self.registers.get_r16(Register16b::BC);
                 let value = value.wrapping_sub(1);
-                // TODO SET FLAGS
+                // no flags set!
                 self.registers.set_r16(Register16b::BC, value);
                 8
             }
             0x0C => {
-                // TODO
                 // INC C
-                self.unimpl_instr();
-                let value = self.registers.get_r8(Register8b::B);
-                let value = value.wrapping_add(1);
-                // TODO SET FLAGS
-                self.registers.set_r8(Register8b::B, value);
+                let value = self.registers.get_r8(Register8b::C);
+                let value = self.alu_inc_byte(value);
+                self.registers.set_r8(Register8b::C, value);
                 4
             }
-            // TODO: opcodes 0x07 -> 0x3F
-
-            // 0x10 -> 0x1F
+            0x0D => {
+                // DEC C
+                let value = self.registers.get_r8(Register8b::C);
+                let value = self.alu_dec_byte(value);
+                self.registers.set_r8(Register8b::C, value);
+                4
+            }
+            0x0E => {
+                // TOTEST
+                // LD C, d8
+                let value = self.mmu.read_byte(self.registers.pc);
+                self.registers.pc = self.registers.pc.wrapping_add(1);
+                self.registers.set_r8(Register8b::C, value);
+                8
+            }
+            0x0F => {
+                // TODO
+                // RLCA
+                self.unimpl_instr();
+                4
+            }
+            0x10 => {
+                // TODO
+                // STOP
+                self.unimpl_instr();
+                self.registers.pc = self.registers.pc.wrapping_add(1);
+                4
+            }
+            0x11 => {
+                // TOTEST: memory
+                // LD DE, d16
+                let value = self.mmu.read_word(self.registers.pc);
+                self.registers.pc = self.registers.pc.wrapping_add(2);
+                self.registers.set_r16(Register16b::DE, value);
+                12
+            }
+            0x12 => {
+                // TODO
+                // LD (DE), A
+                self.unimpl_instr();
+            }
+            0x13 => {
+                // INC DE
+                let value = self.registers.get_r16(Register16b::DE);
+                self.registers
+                    .set_r16(Register16b::DE, value.wrapping_add(1));
+                8
+            }
+            0x14 => {
+                // INC D
+                let value = self.registers.get_r8(Register8b::D);
+                let value = self.alu_inc_byte(value);
+                self.registers.set_r8(Register8b::D, value);
+                4
+            }
+            0x15 => {
+                // DEC D
+                let value = self.registers.get_r8(Register8b::D);
+                let value = self.alu_dec_byte(value);
+                self.registers.set_r8(Register8b::D, value);
+                4
+            }
+            0x1B => {
+                // DEC DE
+                let value = self.registers.get_r16(Register16b::DE);
+                self.registers
+                    .set_r16(Register16b::DE, value.wrapping_sub(1));
+                8
+            }
+            0x1C => {
+                // INC E
+                let value = self.registers.get_r8(Register8b::E);
+                let value = self.alu_inc_byte(value);
+                self.registers.set_r8(Register8b::E, value);
+                4
+            }
+            0x1D => {
+                // DEC E
+                let value = self.registers.get_r8(Register8b::E);
+                let value = self.alu_dec_byte(value);
+                self.registers.set_r8(Register8b::E, value);
+                4
+            }
             // 0x20 -> 0x2F
+            0x23 => {
+                // INC HL
+                let value = self.registers.get_r16(Register16b::HL);
+                self.registers
+                    .set_r16(Register16b::HL, value.wrapping_add(1));
+                8
+            }
+            0x24 => {
+                // INC H
+                let value = self.registers.get_r8(Register8b::H);
+                let value = self.alu_inc_byte(value);
+                self.registers.set_r8(Register8b::H, value);
+                4
+            }
+            0x25 => {
+                // DEC H
+                let value = self.registers.get_r8(Register8b::H);
+                let value = self.alu_dec_byte(value);
+                self.registers.set_r8(Register8b::H, value);
+                4
+            }
+            0x2B => {
+                // DEC HL
+                let value = self.registers.get_r16(Register16b::HL);
+                self.registers
+                    .set_r16(Register16b::HL, value.wrapping_sub(1));
+                8
+            }
+            0x2C => {
+                // INC L
+                let value = self.registers.get_r8(Register8b::L);
+                let value = self.alu_inc_byte(value);
+                self.registers.set_r8(Register8b::L, value);
+                4
+            }
+            0x2D => {
+                // DEC L
+                let value = self.registers.get_r8(Register8b::L);
+                let value = self.alu_dec_byte(value);
+                self.registers.set_r8(Register8b::L, value);
+                4
+            }
             // 0x30 -> 0x3F
-
+            0x33 => {
+                // INC SP
+                self.registers.pc = self.registers.pc.wrapping_add(1);
+                8
+            }
+            0x3B => {
+                // DEC SP
+                self.registers.pc = self.registers.pc.wrapping_sub(1);
+                8
+            }
+            0x3C => {
+                // INC A
+                let value = self.registers.get_r8(Register8b::A);
+                let value = self.alu_inc_byte(value);
+                self.registers.set_r8(Register8b::A, value);
+                4
+            }
+            0x3D => {
+                // DEC A
+                let value = self.registers.get_r8(Register8b::A);
+                let value = self.alu_dec_byte(value);
+                self.registers.set_r8(Register8b::A, value);
+                4
+            }
             // 0x40 -> 0x4F
             0x40 => {
                 // LD B, B    | does nothing
@@ -309,7 +529,6 @@ impl Cpu {
             0x43 => {
                 // LD B, E
                 self.ld_regs_8b(Register8b::B, Register8b::E);
-
                 4
             }
             0x44 => {
@@ -374,7 +593,7 @@ impl Cpu {
             }
             // 0x50 -> 0x5F
             0x50 => {
-                // LD D, B    | does nothing
+                // LD D, B
                 self.ld_regs_8b(Register8b::D, Register8b::B);
                 4
             }
@@ -578,12 +797,267 @@ impl Cpu {
             // 0x80 -> 0x8F
             0x80 => {
                 // ADD A, B
-                self.unimpl_instr();
+                let a = self.registers.get_r8(Register8b::A); // accumulator
+                let y = self.registers.get_r8(Register8b::B); // operand
+                let result = self.alu_add_bytes(a, y, false);
 
-                self.registers.set_flag(Flag::N, false); // subtraction flag
+                self.registers.set_r8(Register8b::A, result);
+                4
+            }
+            0x81 => {
+                // ADD A, C
+                let a = self.registers.get_r8(Register8b::A);
+                let y = self.registers.get_r8(Register8b::C);
+                let result = self.alu_add_bytes(a, y, false);
+
+                self.registers.set_r8(Register8b::A, result);
+                4
+            }
+            0x82 => {
+                // ADD A, D
+                let a = self.registers.get_r8(Register8b::A);
+                let y = self.registers.get_r8(Register8b::D);
+                let result = self.alu_add_bytes(a, y, false);
+
+                self.registers.set_r8(Register8b::A, result);
+                4
+            }
+            0x83 => {
+                // ADD A, E
+                let a = self.registers.get_r8(Register8b::A);
+                let y = self.registers.get_r8(Register8b::E);
+                let result = self.alu_add_bytes(a, y, false);
+
+                self.registers.set_r8(Register8b::A, result);
+                4
+            }
+            0x84 => {
+                // ADD A, H
+                let a = self.registers.get_r8(Register8b::A);
+                let y = self.registers.get_r8(Register8b::H);
+                let result = self.alu_add_bytes(a, y, false);
+
+                self.registers.set_r8(Register8b::A, result);
+                4
+            }
+            0x85 => {
+                // ADD A, L
+                let a = self.registers.get_r8(Register8b::A);
+                let y = self.registers.get_r8(Register8b::L);
+                let result = self.alu_add_bytes(a, y, false);
+
+                self.registers.set_r8(Register8b::A, result);
+                4
+            }
+            0x86 => {
+                self.unimpl_instr();
+            }
+            0x87 => {
+                // ADD A, A
+                let a = self.registers.get_r8(Register8b::A);
+                let result = self.alu_add_bytes(a, a, false);
+
+                self.registers.set_r8(Register8b::A, result);
+                4
+            }
+            0x88 => {
+                // ADC A, B
+                let a = self.registers.get_r8(Register8b::A);
+                let y = self.registers.get_r8(Register8b::B);
+                let result = self.alu_add_bytes(a, y, true);
+
+                self.registers.set_r8(Register8b::A, result);
+                4
+            }
+            0x89 => {
+                // ADC A, C
+                let a = self.registers.get_r8(Register8b::A);
+                let y = self.registers.get_r8(Register8b::C);
+                let result = self.alu_add_bytes(a, y, true);
+
+                self.registers.set_r8(Register8b::A, result);
+                4
+            }
+            0x8A => {
+                // ADC A, D
+                let a = self.registers.get_r8(Register8b::A);
+                let y = self.registers.get_r8(Register8b::D);
+                let result = self.alu_add_bytes(a, y, true);
+
+                self.registers.set_r8(Register8b::A, result);
+                4
+            }
+            0x8B => {
+                // ADC A, E
+                let a = self.registers.get_r8(Register8b::A);
+                let y = self.registers.get_r8(Register8b::E);
+                let result = self.alu_add_bytes(a, y, true);
+
+                self.registers.set_r8(Register8b::A, result);
+                4
+            }
+            0x8C => {
+                // ADC A, H
+                let a = self.registers.get_r8(Register8b::A);
+                let y = self.registers.get_r8(Register8b::H);
+                let result = self.alu_add_bytes(a, y, true);
+
+                self.registers.set_r8(Register8b::A, result);
+                4
+            }
+            0x8D => {
+                // ADC A, L
+                let a = self.registers.get_r8(Register8b::A);
+                let y = self.registers.get_r8(Register8b::L);
+                let result = self.alu_add_bytes(a, y, true);
+
+                self.registers.set_r8(Register8b::A, result);
+                4
+            }
+            0x8E => {
+                // ADC A, (HL)
+                self.unimpl_instr();
+            }
+            0x8F => {
+                // ADC A, A
+                let a = self.registers.get_r8(Register8b::A);
+                let result = self.alu_add_bytes(a, a, true);
+
+                self.registers.set_r8(Register8b::A, result);
                 4
             }
             // 0x90 -> 0x9F
+            0x90 => {
+                // SUB A, B
+                let a = self.registers.get_r8(Register8b::A);
+                let y = self.registers.get_r8(Register8b::B);
+                let result = self.alu_sub_bytes(a, y, false);
+
+                self.registers.set_r8(Register8b::A, result);
+                4
+            }
+            0x91 => {
+                // SUB A, C
+                let a = self.registers.get_r8(Register8b::A);
+                let y = self.registers.get_r8(Register8b::C);
+                let result = self.alu_sub_bytes(a, y, false);
+
+                self.registers.set_r8(Register8b::A, result);
+                4
+            }
+            0x92 => {
+                // SUB A, D
+                let a = self.registers.get_r8(Register8b::A);
+                let y = self.registers.get_r8(Register8b::D);
+                let result = self.alu_sub_bytes(a, y, false);
+
+                self.registers.set_r8(Register8b::A, result);
+                4
+            }
+            0x93 => {
+                // SUB A, E
+                let a = self.registers.get_r8(Register8b::A);
+                let y = self.registers.get_r8(Register8b::E);
+                let result = self.alu_sub_bytes(a, y, false);
+
+                self.registers.set_r8(Register8b::A, result);
+                4
+            }
+            0x94 => {
+                // SUB A, H
+                let a = self.registers.get_r8(Register8b::A);
+                let y = self.registers.get_r8(Register8b::H);
+                let result = self.alu_sub_bytes(a, y, false);
+
+                self.registers.set_r8(Register8b::A, result);
+                4
+            }
+            0x95 => {
+                // SUB A, L
+                let a = self.registers.get_r8(Register8b::A);
+                let y = self.registers.get_r8(Register8b::L);
+                let result = self.alu_sub_bytes(a, y, false);
+
+                self.registers.set_r8(Register8b::A, result);
+                4
+            }
+            0x96 => {
+                self.unimpl_instr();
+            }
+            0x97 => {
+                // SUB A, A
+                let a = self.registers.get_r8(Register8b::A);
+                let result = self.alu_sub_bytes(a, a, false);
+
+                self.registers.set_r8(Register8b::A, result);
+                4
+            }
+            0x98 => {
+                // SBC A, B
+                let a = self.registers.get_r8(Register8b::A);
+                let y = self.registers.get_r8(Register8b::B);
+                let result = self.alu_sub_bytes(a, y, true);
+
+                self.registers.set_r8(Register8b::A, result);
+                4
+            }
+            0x99 => {
+                // SBC A, C
+                let a = self.registers.get_r8(Register8b::A);
+                let y = self.registers.get_r8(Register8b::C);
+                let result = self.alu_sub_bytes(a, y, true);
+
+                self.registers.set_r8(Register8b::A, result);
+                4
+            }
+            0x9A => {
+                // SBC A, D
+                let a = self.registers.get_r8(Register8b::A);
+                let y = self.registers.get_r8(Register8b::D);
+                let result = self.alu_sub_bytes(a, y, true);
+
+                self.registers.set_r8(Register8b::A, result);
+                4
+            }
+            0x9B => {
+                // ADC A, E
+                let a = self.registers.get_r8(Register8b::A);
+                let y = self.registers.get_r8(Register8b::E);
+                let result = self.alu_add_bytes(a, y, true);
+
+                self.registers.set_r8(Register8b::A, result);
+                4
+            }
+            0x9C => {
+                // SBC A, H
+                let a = self.registers.get_r8(Register8b::A);
+                let y = self.registers.get_r8(Register8b::H);
+                let result = self.alu_sub_bytes(a, y, true);
+
+                self.registers.set_r8(Register8b::A, result);
+                4
+            }
+            0x9D => {
+                // SBC A, L
+                let a = self.registers.get_r8(Register8b::A);
+                let y = self.registers.get_r8(Register8b::L);
+                let result = self.alu_sub_bytes(a, y, true);
+
+                self.registers.set_r8(Register8b::A, result);
+                4
+            }
+            0x9E => {
+                // SBC A, (HL)
+                self.unimpl_instr();
+            }
+            0x9F => {
+                // SBC A, A
+                let a = self.registers.get_r8(Register8b::A);
+                let result = self.alu_sub_bytes(a, a, true);
+
+                self.registers.set_r8(Register8b::A, result);
+                4
+            }
             // 0xA0 -> 0xAF
             // 0xB0 -> 0xBF
             // 0xC0 -> 0xCF
@@ -595,7 +1069,7 @@ impl Cpu {
     }
 
     fn execute_prefixed_instr(&mut self, instruction: u8) -> u8 {
-        0
+        self.unimpl_instr();
     }
 
     /// DEBUG FUNCTION
