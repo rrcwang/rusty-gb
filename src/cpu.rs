@@ -320,7 +320,6 @@ impl Cpu {
                 4
             }
             0x08 => {
-                // TOTEST
                 // LD (a16), SP | 0x03 0xNNNN    | write stack pointer, u16 to memory address in operand
                 let address = self.mmu.read_word(self.registers.pc);
                 self.registers.pc = self.registers.pc.wrapping_add(2);
@@ -328,11 +327,10 @@ impl Cpu {
                 20
             }
             0x09 => {
-                // TOTEST
                 // ADD HL, BC   | 0x09           | add BC to HL
-                let bc = self.registers.get_r16(Register16b::BC);
                 let hl = self.registers.get_r16(Register16b::HL);
-                let result = self.alu_add_words(bc, hl);
+                let bc = self.registers.get_r16(Register16b::BC);
+                let result = self.alu_add_words(hl, bc);
                 self.registers.set_r16(Register16b::HL, result);
                 8
             }
@@ -368,7 +366,6 @@ impl Cpu {
                 4
             }
             0x0E => {
-                // TOTEST
                 // LD C, d8
                 let value = self.mmu.read_byte(self.registers.pc);
                 self.registers.pc = self.registers.pc.wrapping_add(1);
@@ -422,6 +419,14 @@ impl Cpu {
                 self.registers.set_r8(Register8b::D, value);
                 4
             }
+            0x19 => {
+                // ADD HL, DE
+                let hl = self.registers.get_r16(Register16b::HL);
+                let de = self.registers.get_r16(Register16b::DE);
+                let result = self.alu_add_words(hl, de);
+                self.registers.set_r16(Register16b::HL, result);
+                8
+            }
             0x1B => {
                 // DEC DE
                 let value = self.registers.get_r16(Register16b::DE);
@@ -465,6 +470,13 @@ impl Cpu {
                 self.registers.set_r8(Register8b::H, value);
                 4
             }
+            0x29 => {
+                // ADD HL, HL
+                let hl = self.registers.get_r16(Register16b::HL);
+                let result = self.alu_add_words(hl, hl);
+                self.registers.set_r16(Register16b::HL, result);
+                8
+            }
             0x2B => {
                 // DEC HL
                 let value = self.registers.get_r16(Register16b::HL);
@@ -489,12 +501,20 @@ impl Cpu {
             // 0x30 -> 0x3F
             0x33 => {
                 // INC SP
-                self.registers.pc = self.registers.pc.wrapping_add(1);
+                self.registers.sp = self.registers.sp.wrapping_add(1);
+                8
+            }
+            0x39 => {
+                // ADD HL, SP
+                let hl = self.registers.get_r16(Register16b::HL);
+                let sp = self.registers.get_r16(Register16b::SP);
+                let result = self.alu_add_words(hl, sp);
+                self.registers.set_r16(Register16b::HL, result);
                 8
             }
             0x3B => {
                 // DEC SP
-                self.registers.pc = self.registers.pc.wrapping_sub(1);
+                self.registers.sp = self.registers.sp.wrapping_sub(1);
                 8
             }
             0x3C => {
@@ -1020,10 +1040,10 @@ impl Cpu {
                 4
             }
             0x9B => {
-                // ADC A, E
+                // SBC A, E
                 let a = self.registers.get_r8(Register8b::A);
                 let y = self.registers.get_r8(Register8b::E);
-                let result = self.alu_add_bytes(a, y, true);
+                let result = self.alu_sub_bytes(a, y, true);
 
                 self.registers.set_r8(Register8b::A, result);
                 4
@@ -1058,8 +1078,190 @@ impl Cpu {
                 self.registers.set_r8(Register8b::A, result);
                 4
             }
-            // 0xA0 -> 0xAF
-            // 0xB0 -> 0xBF
+            0xA0 => {
+                // AND B
+                let y = self.registers.get_r8(Register8b::B);
+                self.alu_and_a(y);
+                4
+            }
+            0xA1 => {
+                // AND C
+                let y = self.registers.get_r8(Register8b::C);
+                self.alu_and_a(y);
+                4
+            }
+            0xA2 => {
+                // AND D
+                let y = self.registers.get_r8(Register8b::D);
+                self.alu_and_a(y);
+                4
+            }
+            0xA3 => {
+                // AND E
+                let y = self.registers.get_r8(Register8b::E);
+                self.alu_and_a(y);
+                4
+            }
+            0xA4 => {
+                // AND H
+                let y = self.registers.get_r8(Register8b::H);
+                self.alu_and_a(y);
+                4
+            }
+            0xA5 => {
+                // AND L
+                let y = self.registers.get_r8(Register8b::L);
+                self.alu_and_a(y);
+                4
+            }
+            0xA6 => {
+                // AND (HL)
+                self.unimpl_instr();
+            }
+            0xA7 => {
+                // AND A
+                let y = self.registers.get_r8(Register8b::A);
+                self.alu_and_a(y);
+                4
+            }
+            0xA8 => {
+                // XOR B
+                let y = self.registers.get_r8(Register8b::B);
+                self.alu_xor_a(y);
+                4
+            }
+            0xA9 => {
+                // XOR C
+                let y = self.registers.get_r8(Register8b::C);
+                self.alu_xor_a(y);
+                4
+            }
+            0xAA => {
+                // XOR D
+                let y = self.registers.get_r8(Register8b::D);
+                self.alu_xor_a(y);
+                4
+            }
+            0xAB => {
+                // XOR E
+                let y = self.registers.get_r8(Register8b::E);
+                self.alu_xor_a(y);
+                4
+            }
+            0xAC => {
+                // XOR H
+                let y = self.registers.get_r8(Register8b::H);
+                self.alu_xor_a(y);
+                4
+            }
+            0xAD => {
+                // XOR L
+                let y = self.registers.get_r8(Register8b::L);
+                self.alu_xor_a(y);
+                4
+            }
+            0xAE => {
+                // AND (HL)
+                self.unimpl_instr();
+            }
+            0xAF => {
+                // XOR A
+                let y = self.registers.get_r8(Register8b::A);
+                self.alu_xor_a(y);
+                4
+            }
+            0xB0 => {
+                // OR B
+                let y = self.registers.get_r8(Register8b::B);
+                self.alu_or_a(y);
+                4
+            }
+            0xB1 => {
+                // OR C
+                let y = self.registers.get_r8(Register8b::C);
+                self.alu_or_a(y);
+                4
+            }
+            0xB2 => {
+                // OR D
+                let y = self.registers.get_r8(Register8b::D);
+                self.alu_or_a(y);
+                4
+            }
+            0xB3 => {
+                // OR E
+                let y = self.registers.get_r8(Register8b::E);
+                self.alu_or_a(y);
+                4
+            }
+            0xB4 => {
+                // OR H
+                let y = self.registers.get_r8(Register8b::H);
+                self.alu_or_a(y);
+                4
+            }
+            0xB5 => {
+                // OR L
+                let y = self.registers.get_r8(Register8b::L);
+                self.alu_or_a(y);
+                4
+            }
+            0xB6 => {
+                // OR (HL)
+                self.unimpl_instr();
+            }
+            0xB7 => {
+                // OR A
+                let y = self.registers.get_r8(Register8b::A);
+                self.alu_or_a(y);
+                4
+            }
+            0xB8 => {
+                // CP B
+                let y = self.registers.get_r8(Register8b::B);
+                self.alu_cp_a(y);
+                4
+            }
+            0xB9 => {
+                // CP C
+                let y = self.registers.get_r8(Register8b::C);
+                self.alu_cp_a(y);
+                4
+            }
+            0xBA => {
+                // CP D
+                let y = self.registers.get_r8(Register8b::D);
+                self.alu_cp_a(y);
+                4
+            }
+            0xBB => {
+                // CP E
+                let y = self.registers.get_r8(Register8b::E);
+                self.alu_cp_a(y);
+                4
+            }
+            0xBC => {
+                // CP H
+                let y = self.registers.get_r8(Register8b::H);
+                self.alu_cp_a(y);
+                4
+            }
+            0xBD => {
+                // CP L
+                let y = self.registers.get_r8(Register8b::L);
+                self.alu_cp_a(y);
+                4
+            }
+            0xBE => {
+                // CP (HL)
+                self.unimpl_instr();
+            }
+            0xBF => {
+                // CP A
+                let y = self.registers.get_r8(Register8b::A);
+                self.alu_cp_a(y);
+                4
+            }
             // 0xC0 -> 0xCF
             // 0xD0 -> 0xDF
             // 0xE0 -> 0xEF
