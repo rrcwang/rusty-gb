@@ -851,7 +851,7 @@ fn cpu_instr_sub_bytes() {
 #[test]
 fn cpu_instr_sbc_bytes() {
     let test_cases: Vec<(u8, u8)> = vec![
-        // A    r8,  carry
+        // A    r8
         (0x00, 0x00),
         (0x23, 0x33),
         (0x54, 0xFF),
@@ -860,7 +860,7 @@ fn cpu_instr_sbc_bytes() {
         (0x01, 0x01),
         (0x55, 0x27),
     ];
-    
+
     let r8s = common::registers_8b_no_f();
     let instrs: Vec<u8> = vec![0x98, 0x99, 0x9A, 0x9B, 0x9C, 0x9D, 0x9F];
     let instrs = instrs.into_iter().zip(r8s);
@@ -899,13 +899,212 @@ fn cpu_instr_sbc_bytes() {
 }
 
 #[test]
-fn cpu_instr_and_a() {}
+fn cpu_instr_and_a() {
+    let test_cases: Vec<(u8, u8)> = vec![
+        // A    r8
+        (0x00, 0x00),
+        (0x23, 0x33),
+        (0x54, 0xFF),
+        (0x01, 0x15),
+        (0xFF, 0xFF),
+        (0x01, 0x01),
+        (0x55, 0x27),
+    ];
+
+    let r8s = common::registers_8b_no_f();
+    let instrs: Vec<u8> = vec![0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA7];
+    let instrs = instrs.into_iter().zip(r8s);
+
+    let mut cpu = Cpu::new();
+    for (a, y) in test_cases {
+        for (op, reg) in instrs.clone() {
+            cpu.registers.set_r8(Register8b::A, a);
+            cpu.registers.set_r8(reg, y);
+
+            cpu.execute_instr(op);
+
+            match reg {
+                Register8b::A => {
+                    assert_eq!(
+                        y,
+                        cpu.registers.get_r8(Register8b::A),
+                        "Op: 0x{:X}. Assertion failed for AND A, A for operand 0x{:X})",
+                        op,
+                        y
+                    );
+                }
+                _ => {
+                    assert_eq!(
+                        a & y,
+                        cpu.registers.get_r8(Register8b::A),
+                        "Op: 0x{:X}. Assertion failed for AND A, {:?} for operands (0x{:X}, 0x{:X})",
+                        op,
+                        reg,
+                        a,
+                        y
+                    );
+                }
+            }
+            cpu.registers.set_r8(Register8b::A, 0x00);
+        }
+    }
+}
 
 #[test]
-fn cpu_instr_xor_a() {}
+fn cpu_instr_xor_a() {
+    let test_cases: Vec<(u8, u8)> = vec![
+        // A    r8
+        (0x00, 0x00),
+        (0x23, 0x33),
+        (0x54, 0xFF),
+        (0x01, 0x15),
+        (0xFF, 0xFF),
+        (0x01, 0x01),
+        (0x55, 0x27),
+    ];
+
+    let r8s = common::registers_8b_no_f();
+    let instrs: Vec<u8> = vec![0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD, 0xAF];
+    let instrs = instrs.into_iter().zip(r8s);
+
+    let mut cpu = Cpu::new();
+    for (a, y) in test_cases {
+        for (op, reg) in instrs.clone() {
+            cpu.registers.set_r8(Register8b::A, a);
+            cpu.registers.set_r8(reg, y);
+
+            cpu.execute_instr(op);
+
+            match reg {
+                Register8b::A => {
+                    assert_eq!(
+                        0,
+                        cpu.registers.get_r8(Register8b::A),
+                        "Op: 0x{:X}. Assertion failed for XOR A, A for operand 0x{:X})",
+                        op,
+                        y
+                    );
+                }
+                _ => {
+                    assert_eq!(
+                        a ^ y,
+                        cpu.registers.get_r8(Register8b::A),
+                        "Op: 0x{:X}. Assertion failed for XOR A, {:?} for operands (0x{:X}, 0x{:X})",
+                        op,
+                        reg,
+                        a,
+                        y
+                    );
+                }
+            }
+            cpu.registers.set_r8(Register8b::A, 0x00);
+        }
+    }
+}
 
 #[test]
-fn cpu_instr_or_a() {}
+fn cpu_instr_or_a() {
+    let test_cases: Vec<(u8, u8)> = vec![
+        // A    r8
+        (0x00, 0x00),
+        (0x23, 0x33),
+        (0x54, 0xFF),
+        (0x01, 0x15),
+        (0xFF, 0xFF),
+        (0x01, 0x01),
+        (0x55, 0x27),
+    ];
+
+    let r8s = common::registers_8b_no_f();
+    let instrs: Vec<u8> = vec![0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB7];
+    let instrs = instrs.into_iter().zip(r8s);
+
+    let mut cpu = Cpu::new();
+    for (a, y) in test_cases {
+        for (op, reg) in instrs.clone() {
+            cpu.registers.set_r8(Register8b::A, a);
+            cpu.registers.set_r8(reg, y);
+
+            cpu.execute_instr(op);
+
+            match reg {
+                Register8b::A => {
+                    assert_eq!(
+                        y,
+                        cpu.registers.get_r8(Register8b::A),
+                        "Op: 0x{:X}. Assertion failed for OR A, A for operand 0x{:X})",
+                        op,
+                        y
+                    );
+                }
+                _ => {
+                    assert_eq!(
+                        a | y,
+                        cpu.registers.get_r8(Register8b::A),
+                        "Op: 0x{:X}. Assertion failed for OR A, {:?} for operands (0x{:X}, 0x{:X})",
+                        op,
+                        reg,
+                        a,
+                        y
+                    );
+                }
+            }
+            cpu.registers.set_r8(Register8b::A, 0x00);
+        }
+    }
+}
 
 #[test]
-fn cpu_instr_cp_a() {}
+fn cpu_instr_cp_a() {
+    let test_cases: Vec<(u8, u8)> = vec![
+        // A    r8
+        (0x00, 0x00),
+        (0x23, 0x33),
+        (0x54, 0xFF),
+        (0x01, 0x15),
+        (0xFF, 0xFF),
+        (0x01, 0x01),
+        (0x55, 0x27),
+    ];
+
+    let r8s = common::registers_8b_no_f();
+    let instrs: Vec<u8> = vec![0xB8, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBF];
+    let instrs = instrs.into_iter().zip(r8s);
+
+    let mut cpu = Cpu::new();
+    for (a, y) in test_cases {
+        for (op, reg) in instrs.clone() {
+            cpu.registers.set_r8(Register8b::A, a);
+            cpu.registers.set_r8(reg, y);
+
+            cpu.execute_instr(op);
+
+            match reg {
+                Register8b::A => {
+                    assert_eq!( 
+                        true,   // flag Z is true if y == a
+                        cpu.registers.get_flag(Flag::Z),
+                        "Op: 0x{:X}. Assertion failed for CP A, A for operand 0x{:X})",
+                        op,
+                        y
+                    );
+                }
+                _ => {
+                    assert_eq!(
+                        a < y,  // flag C is true if y > a.
+                        cpu.registers.get_flag(Flag::C),
+                        "Op: 0x{:X}. Assertion failed for CP A, {:?} for operands (0x{:X}, 0x{:X})",
+                        op,
+                        reg,
+                        a,
+                        y
+                    );
+                    if a == y {
+                        assert!(cpu.registers.get_flag(Flag::Z));
+                    }
+                }
+            }
+            cpu.registers.set_r8(Register8b::A, 0x00);
+        }
+    }
+}
