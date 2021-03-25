@@ -465,6 +465,50 @@ fn cpu_alu_cp_a() {
         common::assert_flags_binop(&cpu, flags, (a, y));
     }
 }
+/// TODO: move integration test
+#[test]
+fn cpu_fetch_byte() {
+    let mut cpu = Cpu::new();
+
+    let test_rom: Vec<u8> = vec![
+        0x00, 0x50, 0x12, 0x55
+    ];
+    cpu.mmu.load_rom(test_rom.clone());
+
+    cpu.registers.pc = 0;
+    let mut test_pc: u16 = 0;
+    for v in test_rom {
+        assert_eq!(v, cpu.fetch_byte());
+        test_pc += 1;
+        assert_eq!(test_pc, cpu.registers.pc);
+    }
+}
+
+/// TODO: move integration test
+#[test]
+fn cpu_fetch_word() {
+    let mut cpu = Cpu::new();
+
+    let test_vals: Vec<u16> = vec![
+        0x0000, 0x5012, 0x12AE, 0x5EE5, 0xFFFF, 0x1283,
+    ];
+
+    let mut test_rom: Vec<u8> = Vec::new();
+    for v in &test_vals {
+        let (high, low) = word_to_bytes(*v);
+        test_rom.push(low);
+        test_rom.push(high);
+    }
+    cpu.mmu.load_rom(test_rom);
+    
+    cpu.registers.pc = 0;
+    let mut test_pc: u16 = 0;
+    for v in test_vals {
+        assert_eq!(v, cpu.fetch_word());
+        test_pc += 2;
+        assert_eq!(test_pc, cpu.registers.pc);
+    }
+}
 
 //////////////////////////////////////////
 // Instruction tests

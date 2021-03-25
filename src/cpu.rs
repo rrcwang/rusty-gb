@@ -214,6 +214,20 @@ impl Cpu {
         self.alu_sub_bytes(a, y, false);
     }
 
+    /// Read a byte pointed to by SP and increment the program counter by 1
+    fn fetch_byte(&mut self) -> u8 {
+        let value: u8 = self.mmu.read_byte(self.registers.pc);
+        self.registers.pc = self.registers.pc.wrapping_add(1);
+        value
+    }
+
+    /// Read a word pointed to by SP and increment the program counter by 2
+    fn fetch_word(&mut self) -> u16 {
+        let value: u16 = self.mmu.read_word(self.registers.pc);
+        self.registers.pc = self.registers.pc.wrapping_add(2);
+        value
+    }
+
     /// Loads the value from one 8-bit register to another. Used for LD R8, R8 instructions.
     fn ld_regs_8b(&mut self, reg_to: Register8b, reg_from: Register8b) {
         /* if reg_from == reg_to { // ignore for now, assuming is not called for same reg instructions
@@ -234,16 +248,13 @@ impl Cpu {
         // TODO: fetch OP code from ROM
         // 0. fetch next instruction, pointed to by PC
         // let instruction: u8 = 0x00;
-        let instruction: u8 = self.mmu.read_byte(self.registers.pc);
+        let instruction: u8 = self.fetch_byte();
 
         // DEBUG:
         println!(
             "CPU executing 0x{:X} at PC: {}",
-            instruction, self.registers.pc
+            instruction, self.registers.pc-1 
         );
-
-        // increment past current opcode
-        self.registers.pc += 1;
 
         // 1. decode and execute instruction
         self.execute_instr(instruction)
@@ -266,15 +277,12 @@ impl Cpu {
             // 0x00 -> 0x0F
             0x00 => 4, // NOP   | 0x00          | do nothing for 1 cycle
             0x01 => {
-                // TOTEST
                 // LD BC, d16   | 0x01 0xNNNN   | load into BC, 0xNNNN
-                let value: u16 = self.mmu.read_word(self.registers.pc); // read data from program
-                self.registers.pc = self.registers.pc.wrapping_add(2); // length of operands
+                let value: u16 = self.fetch_word();
                 self.registers.set_r16(Register16b::BC, value);
                 12 // program takes 12 T-states
             }
             0x02 => {
-                // TOTEST
                 // LD (BC), A   | 0x02          | write byte stored in A to memory location (BC)
                 let value = self.registers.get_r8(Register8b::A);
                 let address = self.registers.get_r16(Register16b::BC);
@@ -282,7 +290,6 @@ impl Cpu {
                 8
             }
             0x03 => {
-                // TOTEST
                 // INC BC      | 0x03           | increment BC register by 1
                 let value = self.registers.get_r16(Register16b::BC);
                 self.registers
@@ -304,10 +311,8 @@ impl Cpu {
                 4
             }
             0x06 => {
-                // TOTEST
                 // LD B, d8
-                let value: u8 = self.mmu.read_byte(self.registers.pc);
-                self.registers.pc = self.registers.pc.wrapping_add(1);
+                let value: u8 = self.fetch_byte();
                 self.registers.set_r8(Register8b::B, value);
                 8
             }
@@ -321,8 +326,7 @@ impl Cpu {
             }
             0x08 => {
                 // LD (a16), SP | 0x03 0xNNNN    | write stack pointer, u16 to memory address in operand
-                let address = self.mmu.read_word(self.registers.pc);
-                self.registers.pc = self.registers.pc.wrapping_add(2);
+                let address = self.fetch_word();
                 self.mmu.write_word(address, self.registers.sp);
                 20
             }
@@ -335,7 +339,6 @@ impl Cpu {
                 8
             }
             0x0A => {
-                // TOTEST
                 // LD A, (BC)
                 let address = self.registers.get_r16(Register16b::BC);
                 let value = self.mmu.read_byte(address);
@@ -343,7 +346,6 @@ impl Cpu {
                 8
             }
             0x0B => {
-                // TOTEST
                 // DEC BC
                 let value = self.registers.get_r16(Register16b::BC);
                 let value = value.wrapping_sub(1);
@@ -367,36 +369,33 @@ impl Cpu {
             }
             0x0E => {
                 // LD C, d8
-                let value = self.mmu.read_byte(self.registers.pc);
-                self.registers.pc = self.registers.pc.wrapping_add(1);
+                let value = self.fetch_byte();
                 self.registers.set_r8(Register8b::C, value);
                 8
             }
             0x0F => {
-                // TODO
                 // RLCA
                 self.unimpl_instr();
                 4
             }
             0x10 => {
-                // TODO
                 // STOP
                 self.unimpl_instr();
                 self.registers.pc = self.registers.pc.wrapping_add(1);
                 4
             }
             0x11 => {
-                // TOTEST: memory
                 // LD DE, d16
-                let value = self.mmu.read_word(self.registers.pc);
-                self.registers.pc = self.registers.pc.wrapping_add(2);
+                let value = self.fetch_word();
                 self.registers.set_r16(Register16b::DE, value);
                 12
             }
             0x12 => {
-                // TODO
                 // LD (DE), A
-                self.unimpl_instr();
+                let value = self.registers.get_r8(Register8b::A);
+                let address = self.registers.get_r16(Register16b::DE);
+                self.mmu.write_byte(address, value);
+                8
             }
             0x13 => {
                 // INC DE
@@ -419,12 +418,25 @@ impl Cpu {
                 self.registers.set_r8(Register8b::D, value);
                 4
             }
+            0x16 => {
+                // LD D, d8
+                let value: u8 = self.fetch_byte();
+                self.registers.set_r8(Register8b::D, value);
+                8
+            }
             0x19 => {
                 // ADD HL, DE
                 let hl = self.registers.get_r16(Register16b::HL);
                 let de = self.registers.get_r16(Register16b::DE);
                 let result = self.alu_add_words(hl, de);
                 self.registers.set_r16(Register16b::HL, result);
+                8
+            }
+            0x1A => {
+                // LD A, (DE)
+                let address = self.registers.get_r16(Register16b::DE);
+                let value = self.mmu.read_byte(address);
+                self.registers.set_r8(Register8b::A, value);
                 8
             }
             0x1B => {
@@ -448,7 +460,30 @@ impl Cpu {
                 self.registers.set_r8(Register8b::E, value);
                 4
             }
+            0x1E => {
+                // LD E, d8
+                let value = self.fetch_byte();
+                self.registers.set_r8(Register8b::E, value);
+                8
+            }
             // 0x20 -> 0x2F
+            0x21 => {
+                // LD HL, d16
+                let value = self.fetch_word();
+                self.registers.set_r16(Register16b::HL, value);
+                12
+            }
+            0x22 => {
+                // LD (HL+), A
+                let value = self.registers.get_r8(Register8b::A);
+                let address = self.registers.get_r16(Register16b::HL);
+                self.mmu.write_byte(address, value);
+
+                // increment HL
+                self.registers.set_r16(Register16b::HL, address.wrapping_add(1));
+
+                8
+            }
             0x23 => {
                 // INC HL
                 let value = self.registers.get_r16(Register16b::HL);
@@ -470,11 +505,30 @@ impl Cpu {
                 self.registers.set_r8(Register8b::H, value);
                 4
             }
+            0x26 => {
+                // LD H, d8
+                let value: u8 = self.fetch_byte();
+                self.registers.set_r8(Register8b::H, value);
+                8
+            }
+            0x27 => {
+                // DAA
+                // https://stackoverflow.com/questions/8119577/z80-daa-instruction/8119836
+                self.unimpl_instr();
+            }
             0x29 => {
                 // ADD HL, HL
                 let hl = self.registers.get_r16(Register16b::HL);
                 let result = self.alu_add_words(hl, hl);
                 self.registers.set_r16(Register16b::HL, result);
+                8
+            }
+            0x2A => {
+                // LD A, (HL+)
+                let address = self.registers.get_r16(Register16b::HL);
+                self.registers.set_r16(Register16b::HL, address.wrapping_add(1));
+                let value = self.mmu.read_byte(address);
+                self.registers.set_r8(Register8b::A, value);
                 8
             }
             0x2B => {
@@ -498,11 +552,58 @@ impl Cpu {
                 self.registers.set_r8(Register8b::L, value);
                 4
             }
+            0x2E => {
+                // LD L, d8
+                let value = self.fetch_byte();
+                self.registers.set_r8(Register8b::L, value);
+                8
+            }
+            0x2F => { 
+                // CPL          | Complement accumulator A
+                let a = self.registers.get_r8(Register8b::A);
+                self.registers.set_r8(Register8b::A, !a);
+                self.registers.set_flag(Flag::N, true);
+                self.registers.set_flag(Flag::H, true);
+                4
+            }
             // 0x30 -> 0x3F
+            0x31 => {
+                // LD SP, d16
+                let value = self.fetch_word();
+                self.registers.set_r16(Register16b::SP, value);
+                12
+            }
+            0x32 => {
+                // LD (HL-), A
+                let value = self.registers.get_r8(Register8b::A);
+                let address = self.registers.get_r16(Register16b::HL);
+                self.mmu.write_byte(address, value);
+
+                // decrement HL
+                self.registers.set_r16(Register16b::HL, address.wrapping_sub(1));
+                
+                8
+            }
             0x33 => {
                 // INC SP
                 self.registers.sp = self.registers.sp.wrapping_add(1);
                 8
+            }
+            0x36 => {
+                // LD (HL), d8
+                let value: u8 = self.fetch_byte();
+                let address = self.registers.get_r16(Register16b::HL);
+                self.mmu.write_byte(address, value);
+                8
+            }
+            0x38 => {
+                // SCF
+                // maybe should be done with set_flag for clarity?
+                let mut flags = self.registers.get_r8(Register8b::F);
+                flags |= 0b_0001_0000; // set bit 4
+                flags &= 0b_1001_1111; // clear bits 5, 6
+                self.registers.set_r8(Register8b::F, flags);
+                4
             }
             0x39 => {
                 // ADD HL, SP
@@ -510,6 +611,14 @@ impl Cpu {
                 let sp = self.registers.get_r16(Register16b::SP);
                 let result = self.alu_add_words(hl, sp);
                 self.registers.set_r16(Register16b::HL, result);
+                8
+            }
+            0x3A => {
+                // LD A, (HL-)
+                let address = self.registers.get_r16(Register16b::HL);
+                self.registers.set_r16(Register16b::HL, address.wrapping_sub(1));
+                let value = self.mmu.read_byte(address);
+                self.registers.set_r8(Register8b::A, value);
                 8
             }
             0x3B => {
@@ -531,7 +640,20 @@ impl Cpu {
                 self.registers.set_r8(Register8b::A, value);
                 4
             }
-            // 0x40 -> 0x4F
+            0x3E => {
+                // LD E, d8
+                let value = self.fetch_byte();
+                self.registers.set_r8(Register8b::A, value);
+                8
+            }
+            0x3F => {
+                // CCF        | complement C flag
+                let c = self.registers.get_flag(Flag::C);
+                self.registers.set_flag(Flag::N, false);
+                self.registers.set_flag(Flag::H, false);
+                self.registers.set_flag(Flag::C, !c);
+                4
+            }
             0x40 => {
                 // LD B, B    | does nothing
                 4
@@ -562,9 +684,10 @@ impl Cpu {
                 4
             }
             0x46 => {
-                // TODO
                 // LD B, (HL)
-                self.unimpl_instr();
+                let address = self.registers.get_r16(Register16b::HL);
+                let value = self.mmu.read_byte(address);
+                self.registers.set_r8(Register8b::B, value);
                 8
             }
             0x47 => {
@@ -602,9 +725,11 @@ impl Cpu {
                 4
             }
             0x4E => {
-                // TODO
                 // LD C, (HL)
-                self.unimpl_instr();
+                let address = self.registers.get_r16(Register16b::HL);
+                let value = self.mmu.read_byte(address);
+                self.registers.set_r8(Register8b::C, value);
+                8
             }
             0x4F => {
                 // LD C, A
@@ -642,10 +767,10 @@ impl Cpu {
                 4
             }
             0x56 => {
-                // TODO
                 // LD D, (HL)
-                self.unimpl_instr();
-
+                let address = self.registers.get_r16(Register16b::HL);
+                let value = self.mmu.read_byte(address);
+                self.registers.set_r8(Register8b::D, value);
                 8
             }
             0x57 => {
@@ -683,9 +808,11 @@ impl Cpu {
                 4
             }
             0x5E => {
-                // TODO
                 // LD E, (HL)
-                self.unimpl_instr();
+                let address = self.registers.get_r16(Register16b::HL);
+                let value = self.mmu.read_byte(address);
+                self.registers.set_r8(Register8b::E, value);
+                8
             }
             0x5F => {
                 // LD E, A
@@ -723,10 +850,10 @@ impl Cpu {
                 4
             }
             0x66 => {
-                // TODO
                 // LD H, (HL)
-                self.unimpl_instr();
-
+                let address = self.registers.get_r16(Register16b::HL);
+                let value = self.mmu.read_byte(address);
+                self.registers.set_r8(Register8b::H, value);
                 8
             }
             0x67 => {
@@ -764,16 +891,71 @@ impl Cpu {
                 4
             }
             0x6E => {
-                // TODO
                 // LD L, (HL)
-                self.unimpl_instr();
+                let address = self.registers.get_r16(Register16b::HL);
+                let value = self.mmu.read_byte(address);
+                self.registers.set_r8(Register8b::L, value);
+                8
             }
             0x6F => {
                 // LD L, A
                 self.ld_regs_8b(Register8b::L, Register8b::A);
                 4
             }
-            // 0x70 -> 0x7F
+            0x70 => {
+                // LD (HL), B
+                let address = self.registers.get_r16(Register16b::HL);
+                let value = self.registers.get_r8(Register8b::B);
+                self.mmu.write_byte(address, value);
+                8
+            }
+            0x71 => {
+                // LD (HL), C
+                let address = self.registers.get_r16(Register16b::HL);
+                let value = self.registers.get_r8(Register8b::C);
+                self.mmu.write_byte(address, value);
+                8
+            }
+            0x72 => {
+                // LD (HL), D
+                let address = self.registers.get_r16(Register16b::HL);
+                let value = self.registers.get_r8(Register8b::D);
+                self.mmu.write_byte(address, value);
+                8
+            }
+            0x73 => {
+                // LD (HL), E
+                let address = self.registers.get_r16(Register16b::HL);
+                let value = self.registers.get_r8(Register8b::E);
+                self.mmu.write_byte(address, value);
+                8
+            }
+            0x74 => {
+                // LD (HL), H
+                let address = self.registers.get_r16(Register16b::HL);
+                let value = self.registers.get_r8(Register8b::H);
+                self.mmu.write_byte(address, value);
+                8
+            }
+            0x75 => {
+                // LD (HL), L
+                let address = self.registers.get_r16(Register16b::HL);
+                let value = self.registers.get_r8(Register8b::L);
+                self.mmu.write_byte(address, value);
+                8
+            }
+            0x76 => {
+                // HALT
+                self.unimpl_instr();
+                4
+            }
+            0x77 => {
+                // LD (HL), A
+                let address = self.registers.get_r16(Register16b::HL);
+                let value = self.registers.get_r8(Register8b::A);
+                self.mmu.write_byte(address, value);
+                8
+            }
             0x78 => {
                 // LD A, B
                 self.ld_regs_8b(Register8b::A, Register8b::B);
@@ -805,9 +987,10 @@ impl Cpu {
                 4
             }
             0x7E => {
-                // TODO
                 // LD A, (HL)
-                self.unimpl_instr();
+                let address = self.registers.get_r16(Register16b::HL);
+                let value = self.mmu.read_byte(address);
+                self.registers.set_r8(Register8b::A, value);
                 8
             }
             0x7F => {
@@ -870,7 +1053,14 @@ impl Cpu {
                 4
             }
             0x86 => {
-                self.unimpl_instr();
+                // ADD A, (HL)
+                let a = self.registers.get_r8(Register8b::A);
+                let address = self.registers.get_r16(Register16b::HL);
+                let y = self.mmu.read_byte(address);
+                let result = self.alu_add_bytes(a, y, false);
+
+                self.registers.set_r8(Register8b::A, result);
+                8
             }
             0x87 => {
                 // ADD A, A
@@ -936,7 +1126,13 @@ impl Cpu {
             }
             0x8E => {
                 // ADC A, (HL)
-                self.unimpl_instr();
+                let a = self.registers.get_r8(Register8b::A);
+                let address = self.registers.get_r16(Register16b::HL);
+                let y = self.mmu.read_byte(address);
+                let result = self.alu_add_bytes(a, y, true);
+
+                self.registers.set_r8(Register8b::A, result);
+                8
             }
             0x8F => {
                 // ADC A, A
@@ -1002,7 +1198,14 @@ impl Cpu {
                 4
             }
             0x96 => {
-                self.unimpl_instr();
+                // SUB A, (HL)
+                let a = self.registers.get_r8(Register8b::A);
+                let address = self.registers.get_r16(Register16b::HL);
+                let y = self.mmu.read_byte(address);
+                let result = self.alu_sub_bytes(a, y, false);
+
+                self.registers.set_r8(Register8b::A, result);
+                8
             }
             0x97 => {
                 // SUB A, A
@@ -1068,7 +1271,13 @@ impl Cpu {
             }
             0x9E => {
                 // SBC A, (HL)
-                self.unimpl_instr();
+                let a = self.registers.get_r8(Register8b::A);
+                let address = self.registers.get_r16(Register16b::HL);
+                let y = self.mmu.read_byte(address);
+                let result = self.alu_sub_bytes(a, y, true);
+
+                self.registers.set_r8(Register8b::A, result);
+                8
             }
             0x9F => {
                 // SBC A, A
@@ -1116,7 +1325,10 @@ impl Cpu {
             }
             0xA6 => {
                 // AND (HL)
-                self.unimpl_instr();
+                let address = self.registers.get_r16(Register16b::HL);
+                let y = self.mmu.read_byte(address);
+                self.alu_and_a(y);
+                8
             }
             0xA7 => {
                 // AND A
@@ -1161,8 +1373,11 @@ impl Cpu {
                 4
             }
             0xAE => {
-                // AND (HL)
-                self.unimpl_instr();
+                // XOR (HL)
+                let address = self.registers.get_r16(Register16b::HL);
+                let y = self.mmu.read_byte(address);
+                self.alu_xor_a(y);
+                8
             }
             0xAF => {
                 // XOR A
@@ -1208,7 +1423,10 @@ impl Cpu {
             }
             0xB6 => {
                 // OR (HL)
-                self.unimpl_instr();
+                let address = self.registers.get_r16(Register16b::HL);
+                let y = self.mmu.read_byte(address);
+                self.alu_or_a(y);
+                8
             }
             0xB7 => {
                 // OR A
@@ -1254,7 +1472,10 @@ impl Cpu {
             }
             0xBE => {
                 // CP (HL)
-                self.unimpl_instr();
+                let address = self.registers.get_r16(Register16b::HL);
+                let y = self.mmu.read_byte(address);
+                self.alu_cp_a(y);
+                8
             }
             0xBF => {
                 // CP A
@@ -1263,9 +1484,61 @@ impl Cpu {
                 4
             }
             // 0xC0 -> 0xCF
+            0xC6 => {
+                // ADD A, d8
+                let y = self.fetch_byte();
+                let a = self.registers.get_r8(Register8b::A);
+                self.alu_add_bytes(a, y, false);
+                8
+            }
+            0xCE => {
+                // ADC A, d8
+                let y = self.fetch_byte();
+                let a = self.registers.get_r8(Register8b::A);
+                self.alu_add_bytes(a, y, true);
+                8
+            }
             // 0xD0 -> 0xDF
+            0xD6 => {
+                // SUB A, d8
+                let y = self.fetch_byte();
+                let a = self.registers.get_r8(Register8b::A);
+                self.alu_sub_bytes(a, y, false);
+                8
+            }
+            0xDE => {
+                // SBC A, d8
+                let y = self.fetch_byte();
+                let a = self.registers.get_r8(Register8b::A);
+                self.alu_sub_bytes(a, y, true);
+                8
+            }
             // 0xE0 -> 0xEF
+            0xE6 => {
+                // AND d8
+                let y = self.fetch_byte();
+                self.alu_and_a(y);
+                8
+            }
+            0xEE => {
+                // XOR d8
+                let y = self.fetch_byte();
+                self.alu_xor_a(y);
+                8
+            }
             // 0xF0 -> 0xFF
+            0xF6 => {
+                // OR d8
+                let y = self.fetch_byte();
+                self.alu_or_a(y);
+                8
+            }
+            0xFE => {
+                // CP d8
+                let y = self.fetch_byte();
+                self.alu_cp_a(y);
+                8
+            }
             _ => self.unimpl_instr(),
         }
     }

@@ -75,10 +75,9 @@ impl Mmu {
 
     /// TODO: reads a word (2 bytes) from the memory. Needs test
     pub fn read_word(&self, address: u16) -> u16 {
-        let low = self.read_byte(address);
+        let low = self.read_byte(address) as u16;
         let high = self.read_byte(address + 1) as u16;
-
-        high << 8 + low
+        (high << 8) + low
     }
 
     // TODO:
