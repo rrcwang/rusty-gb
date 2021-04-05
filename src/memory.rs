@@ -1,4 +1,5 @@
 use std::boxed::Box;
+use crate::utils::*;
 
 // TODO implement memory
 //  * working RAM (WRAM)
@@ -30,11 +31,10 @@ impl Mmu {
     }
 
     /// TODO: reads a byte from the memory-mapped bus
-    /// Impl
     pub fn read_byte(&self, address: u16) -> u8 {
         match address {
             0x0000..=0x7FFF => {
-                // fixed ROM. TODO reimplement as MBC
+                // fixed ROM
                 match self.mbc.read_byte(address) {
                     Ok(byte) => byte,
                     Err(_) => panic!("Cartirdge ROM read error."), // handle this?
@@ -46,7 +46,7 @@ impl Mmu {
             0xA000..=0xBFFF => {
                 unimplemented!("Cartridge RAM read");
             }
-            0xC000..=0xDFFF => {
+            0xC000..=0xDFFF => { // WRAM read
                 // TODO: test
                 self.wram[address as usize - 0xC000]
             }
@@ -75,20 +75,30 @@ impl Mmu {
 
     /// TODO: reads a word (2 bytes) from the memory. Needs test
     pub fn read_word(&self, address: u16) -> u16 {
-        let low = self.read_byte(address) as u16;
-        let high = self.read_byte(address + 1) as u16;
-        (high << 8) + low
+        let low = self.read_byte(address);
+        let high = self.read_byte(address + 1);
+        bytes_to_word(high, low)
     }
 
-    // TODO:
+    // TODO: writes a byte to the memory-mapped bus
     pub fn write_byte(&mut self, address: u16, value: u8) {
-        unimplemented!("Memory write not yet implemented!")
+        match address {
+            0x0000..=0x7FFF => {
+                // fixed ROM
+                self.mbc.write_byte(address, value);
+            }
+            0xC000..=0xDFFF => {
+                self.wram[address as usize - 0xC000] = value;
+            }
+            _ => { unimplemented!("Memory write") }
+        };
     }
 
     // TODO:
     pub fn write_word(&mut self, address: u16, value: u16) {
-        self.write_byte(address, (value & 0xFF) as u8);
-        self.write_byte(address + 1, (value >> 8) as u8);
+        let (high, low) = word_to_bytes(value);
+        self.write_byte(address, low);
+        self.write_byte(address + 1, high);
     }
 
     /// TODO: load game program to ROM

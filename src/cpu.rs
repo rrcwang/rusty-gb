@@ -214,6 +214,19 @@ impl Cpu {
         self.alu_sub_bytes(a, y, false);
     }
 
+    fn bit_op_rlc(&mut self, x: u8) -> u8 {
+        let carry_out = x >> 7;
+        let carry_in = self.registers.get_flag(Flag::C) as u8;
+        let value = x << 1 | carry_in;
+        
+        self.registers.set_flag(Flag::Z, value == 0);
+        self.registers.set_flag(Flag::N, false);
+        self.registers.set_flag(Flag::H, false);
+        self.registers.set_flag(Flag::C, carry_out == 1);
+
+        value
+    }
+
     /// Read a byte pointed to by SP and increment the program counter by 1
     fn fetch_byte(&mut self) -> u8 {
         let value: u8 = self.mmu.read_byte(self.registers.pc);
@@ -588,6 +601,22 @@ impl Cpu {
                 // INC SP
                 self.registers.sp = self.registers.sp.wrapping_add(1);
                 8
+            }
+            0x34 => {
+                // INC (HL)
+                let address = self.registers.get_r16(Register16b::HL);
+                let value = self.mmu.read_byte(address);
+                let value = self.alu_inc_byte(value);
+                self.mmu.write_byte(address, value);
+                12
+            }
+            0x35 => {
+                // DEC (HL)
+                let address = self.registers.get_r16(Register16b::HL);
+                let value = self.mmu.read_byte(address);
+                let value = self.alu_dec_byte(value);
+                self.mmu.write_byte(address, value);
+                12
             }
             0x36 => {
                 // LD (HL), d8
@@ -1484,12 +1513,33 @@ impl Cpu {
                 4
             }
             // 0xC0 -> 0xCF
+            0xC1 => {
+                // POP BC
+                let value = self.mmu.read_word(self.registers.sp);
+                self.registers.sp = self.registers.sp.wrapping_add(2);
+                self.registers.set_r16(Register16b::BC, value);
+                12
+            }
+            0xC5 => {
+                // PUSH BC
+                let value = self.registers.get_r16(Register16b::BC);
+                self.registers.sp = self.registers.sp.wrapping_sub(2);
+                self.mmu.write_word(self.registers.sp, value);
+                16
+            }
             0xC6 => {
                 // ADD A, d8
                 let y = self.fetch_byte();
                 let a = self.registers.get_r8(Register8b::A);
                 self.alu_add_bytes(a, y, false);
                 8
+            }
+            0xCB => {
+                // PREFIX
+                self.unimpl_instr();
+
+                let instr = self.fetch_byte();
+                self.execute_prefixed_instr(instr)
             }
             0xCE => {
                 // ADC A, d8
@@ -1499,6 +1549,20 @@ impl Cpu {
                 8
             }
             // 0xD0 -> 0xDF
+            0xD1 => {
+                // POP DE
+                let value = self.mmu.read_word(self.registers.sp);
+                self.registers.sp = self.registers.sp.wrapping_add(2);
+                self.registers.set_r16(Register16b::DE, value);
+                12
+            }
+            0xD5 => {
+                // PUSH DE
+                let value = self.registers.get_r16(Register16b::DE);
+                self.registers.sp = self.registers.sp.wrapping_sub(2);
+                self.mmu.write_word(self.registers.sp, value);
+                16
+            }
             0xD6 => {
                 // SUB A, d8
                 let y = self.fetch_byte();
@@ -1514,11 +1578,57 @@ impl Cpu {
                 8
             }
             // 0xE0 -> 0xEF
+            0xE0 => {
+                // LDH (a8), A
+                let address = self.fetch_byte() as u16 + 0xFF00;
+                assert!(0xFF00 <= address); // DEBUG
+                let value = self.registers.get_r8(Register8b::A);
+                self.mmu.write_byte(address, value);
+                12
+            }
+            0xE1 => {
+                // POP HL
+                let value = self.mmu.read_word(self.registers.sp);
+                self.registers.sp = self.registers.sp.wrapping_add(2);
+                self.registers.set_r16(Register16b::HL, value);
+                12
+            }
+            0xE2 => {
+                // LD (C), A
+                let address = self.registers.get_r8(Register8b::C) as u16 + 0xFF00;
+                assert!(0xFF00 <= address); // DEBUG
+                let value = self.registers.get_r8(Register8b::A);
+                self.mmu.write_byte(address, value);
+                12
+            }
+            0xE5 => {
+                // PUSH HL
+                let value = self.registers.get_r16(Register16b::HL);
+                self.registers.sp = self.registers.sp.wrapping_sub(2);
+                self.mmu.write_word(self.registers.sp, value);
+                16
+            }
             0xE6 => {
                 // AND d8
                 let y = self.fetch_byte();
                 self.alu_and_a(y);
                 8
+            }
+            0xE8 => {
+                // ADD SP, r8
+                // two's complement should work here
+                let offset = self.fetch_byte() as i8 as u16;
+                // (255 as i8) as u16 => (-1) as u16 => 25565
+                self.registers.sp = self.alu_add_words(self.registers.sp, offset);
+                self.registers.set_flag(Flag::Z, false);
+                16
+            }
+            0xEA => {
+                // LD (a16), A
+                let address = self.fetch_word();
+                let value = self.registers.get_r8(Register8b::A);
+                self.mmu.write_byte(address, value);
+                16
             }
             0xEE => {
                 // XOR d8
@@ -1527,10 +1637,71 @@ impl Cpu {
                 8
             }
             // 0xF0 -> 0xFF
+            0xF0 => {
+                // LDH A, (a8)
+                let address = self.fetch_byte() as u16 + 0xFF00;
+                assert!(0xFF00 <= address); // DEBUG
+                let value = self.mmu.read_byte(address);
+                self.registers.set_r8(Register8b::A, value);
+                12
+            }
+            0xF1 => {
+                // POP AF
+                let value = self.mmu.read_word(self.registers.sp);
+                self.registers.sp = self.registers.sp.wrapping_add(2);
+                self.registers.set_r16(Register16b::AF, value);
+                12
+            }
+            0xF2 => {
+                // LD A, (C)
+                let address = self.registers.get_r8(Register8b::C) as u16 + 0xFF00;
+                assert!(0xFF00 <= address); // DEBUG
+                let value = self.mmu.read_byte(address);
+                self.registers.set_r8(Register8b::A, value);
+                12
+            }
+            0xF3 => {
+                // DI       | disable interrupts
+                self.interrupt_master_enable = false;
+                4
+            }
+            0xF5 => {
+                // PUSH AF
+                let value = self.registers.get_r16(Register16b::AF) | 0xFFF0; // must clear empty flag bits? 
+                self.registers.sp = self.registers.sp.wrapping_sub(2);
+                self.mmu.write_word(self.registers.sp, value);
+                16
+            }
             0xF6 => {
                 // OR d8
                 let y = self.fetch_byte();
                 self.alu_or_a(y);
+                8
+            }
+            0xF8 => {
+                // LD HL, SP + r8
+                let offset = self.fetch_byte() as i8 as u16; // see 0xE8 
+                let value = self.alu_add_words(self.registers.sp, offset);
+                self.registers.set_r16(Register16b::HL, value);
+                self.registers.set_flag(Flag::Z, false);
+                12
+            }
+            0xFA => {
+                // LD A, (a16)
+                let address = self.fetch_word();
+                let value = self.mmu.read_byte(address);
+                self.registers.set_r8(Register8b::A, value);
+                16
+            }
+            0xFB => {
+                // EI       | enable interrupts
+                self.interrupt_master_enable = true;
+                4
+            }
+            0xF9 => {
+                // LD SP, HL
+                let value = self.registers.get_r16(Register16b::HL);
+                self.registers.set_r16(Register16b::SP, value);
                 8
             }
             0xFE => {
@@ -1545,6 +1716,17 @@ impl Cpu {
 
     fn execute_prefixed_instr(&mut self, instruction: u8) -> u8 {
         self.unimpl_instr();
+
+        // interpret target r8 or (HL)
+
+        // read target and store in value
+
+        // interpret for desired instruction
+        
+        // modify value
+        
+        // store back into target
+
     }
 
     /// DEBUG FUNCTION
