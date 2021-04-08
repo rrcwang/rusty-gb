@@ -607,7 +607,55 @@ fn cpu_instr_ld_r16_d16() {
 
 #[test]
 fn cpu_instr_ld_r8_d8() {
-    todo!("")
+    let test_cases: Vec<u8> = vec![
+        0x23, 0x55, 0x00, 0x53, 0xFE, 0xAD, 0xFF,
+    ];
+    let instrs: Vec<(u8, Register8b)> = vec![
+        (0x06, Register8b::B),
+        (0x16, Register8b::D),
+        (0x26, Register8b::H),
+    ];
+
+    let mut cpu = Cpu::new();
+    for value in test_cases {
+        for (op, reg) in instrs.clone() {
+            let test_rom: Vec<u8> = vec![op, value];
+            cpu.registers.pc = 0; // mocked program counter
+            cpu.mmu.load_rom(test_rom);
+
+            let cycles = cpu.fetch_and_execute();
+
+            assert_eq!(2, cpu.registers.pc);
+            assert_eq!(value, cpu.registers.get_r8(reg));
+            assert_eq!(8, cycles);
+        }
+    }
+}
+
+#[test]
+fn cpu_instr_ld_hl_ptr_d8() {
+    let test_cases: Vec<(u8, u16)> = vec![
+    //  val     wram addr
+        (0x23, 0xCFFF), 
+        (0x55, 0xDADE), 
+        (0x00, 0xC039), 
+        (0x53, 0xC000), 
+        (0xFE, 0xCAA9), 
+        (0xAD, 0xC0A0), 
+        (0xFF, 0xC00E),
+    ];
+
+    let mut cpu = Cpu::new();
+    for (value, address) in test_cases {
+        cpu.registers.set_r16(Register16b::HL, address);
+        cpu.registers.pc = 0; // mocked program counter
+
+        let cycles = cpu.execute_instr(0x36);
+
+        assert_eq!(2, cpu.registers.pc);
+        assert_eq!(value, cpu.mmu.read_byte(address));
+        assert_eq!(8, cycles);
+    }
 }
 
 #[test]
