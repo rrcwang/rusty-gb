@@ -648,13 +648,15 @@ fn cpu_instr_ld_hl_ptr_d8() {
     let mut cpu = Cpu::new();
     for (value, address) in test_cases {
         cpu.registers.set_r16(Register16b::HL, address);
+        let test_rom: Vec<u8> = vec![0x36, value];
         cpu.registers.pc = 0; // mocked program counter
+        cpu.mmu.load_rom(test_rom);
 
-        let cycles = cpu.execute_instr(0x36);
+        let cycles = cpu.fetch_and_execute();
 
         assert_eq!(2, cpu.registers.pc);
         assert_eq!(value, cpu.mmu.read_byte(address));
-        assert_eq!(8, cycles);
+        assert_eq!(12, cycles);
     }
 }
 
@@ -756,7 +758,38 @@ fn cpu_instr_ld_hld_ptr_a() {
         assert_eq!(8, cycles);
         assert_eq!(address.wrapping_sub(1), cpu.registers.get_r16(Register16b::HL));
         assert_eq!(value, cpu.mmu.read_byte(address));
-        assert_eq!(cpu.registers.pc, 0);
+        assert_eq!(0, cpu.registers.pc);
+    }
+}
+
+#[test]
+fn cpu_instr_ld_d16_ptr_sp() {
+    let test_cases: Vec<(u16, u16)> = vec![
+    //  addr in 0xC000..=0xDFFF, WRAM range, sp
+        (0xC000, 0x8213), 
+        (0xC000, 0x8213), 
+        (0xC001, 0x8213), 
+        (0xD98F, 0x8213), 
+        (0xCDCD, 0x8213), 
+        (0xD98E, 0x8213), 
+    ];
+
+    let mut cpu = Cpu::new();
+    cpu.registers.pc = 0;   // test program counter, shouldn't change
+    for (address, stack_pointer) in test_cases {
+        cpu.registers.set_r16(Register16b::HL, address);
+        let (high, low) = word_to_bytes(address);
+        let test_rom: Vec<u8> = vec![0x08, low, high];
+        cpu.mmu.load_rom(test_rom);
+        
+        cpu.registers.pc = 0; // mocked program counter
+        cpu.registers.sp = stack_pointer;
+
+        let cycles = cpu.fetch_and_execute();
+
+        assert_eq!(20, cycles);
+        assert_eq!(3, cpu.registers.pc);
+        assert_eq!(stack_pointer, cpu.mmu.read_word(address));
     }
 }
 

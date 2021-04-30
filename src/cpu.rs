@@ -623,7 +623,14 @@ impl Cpu {
                 let value: u8 = self.fetch_byte();
                 let address = self.registers.get_r16(Register16b::HL);
                 self.mmu.write_byte(address, value);
-                8
+                12
+            }
+            0x37 => {
+                // SCF
+                self.registers.set_flag(Flag::N, false);
+                self.registers.set_flag(Flag::H, false);
+                self.registers.set_flag(Flag::C, true);
+                4
             }
             0x38 => {
                 // SCF
