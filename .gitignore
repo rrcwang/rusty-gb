@@ -62,3 +62,7 @@ Network Trash Folder
 Temporary Items
 .apdisk
 ~$op_code_progress.xlsx
+
+# IDE
+.vscode
+.idea
