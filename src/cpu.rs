@@ -40,7 +40,7 @@ impl Cpu {
     /// H: if sum of lower 4 bits overflows
     /// C: if sum of 8 bits overflows
     fn alu_add_bytes(&mut self, x: u8, y: u8, use_carry: bool) -> u8 {
-        let c: u16 = match use_carry & self.registers.get_flag(Flag::C) {
+        let c: u16 = match use_carry & self.registers.flag_value(Flag::C) {
             true => 1,
             false => 0,
         };
@@ -73,7 +73,7 @@ impl Cpu {
     /// # Arguments
     /// `x`, `y` - Operands for the subtraction
     fn alu_sub_bytes(&mut self, x: u8, y: u8, use_carry: bool) -> u8 {
-        let c: u16 = match use_carry & self.registers.get_flag(Flag::C) {
+        let c: u16 = match use_carry & self.registers.flag_value(Flag::C) {
             true => 1,
             false => 0,
         };
@@ -117,7 +117,7 @@ impl Cpu {
         let (y_high, y_low) = word_to_bytes(y);
 
         // need to leave z untouched, but alu_add_bytes modifies Z
-        let z = self.registers.get_flag(Flag::Z);
+        let z = self.registers.flag_value(Flag::Z);
 
         let low = self.alu_add_bytes(x_low, y_low, false);
         let high = self.alu_add_bytes(x_high, y_high, true);
@@ -216,7 +216,7 @@ impl Cpu {
 
     fn bit_op_rlc(&mut self, x: u8) -> u8 {
         let carry_out = x >> 7;
-        let carry_in = self.registers.get_flag(Flag::C) as u8;
+        let carry_in = self.registers.flag_value(Flag::C) as u8;
         let value = x << 1 | carry_in;
         
         self.registers.set_flag(Flag::Z, value == 0);
@@ -684,7 +684,7 @@ impl Cpu {
             }
             0x3F => {
                 // CCF        | complement C flag
-                let c = self.registers.get_flag(Flag::C);
+                let c = self.registers.flag_value(Flag::C);
                 self.registers.set_flag(Flag::N, false);
                 self.registers.set_flag(Flag::H, false);
                 self.registers.set_flag(Flag::C, !c);

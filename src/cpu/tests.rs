@@ -17,7 +17,10 @@ mod common {
     }
     pub fn registers_16b_no_af() -> Vec<Register16b> {
         vec![
-            Register16b::BC, Register16b::DE, Register16b::HL, Register16b::SP
+            Register16b::BC,
+            Register16b::DE,
+            Register16b::HL,
+            Register16b::SP,
         ]
     }
 
@@ -32,17 +35,9 @@ mod common {
     ///
     /// * `Result::Err(s)` - where `s` is a string describing which flag failed. If multiple failed
     ///                         then only returns the first.
-    pub fn assert_flags(cpu: &Cpu, values: Vec<bool>, flags: Vec<Flag>) -> Result<(), Flag> {
-        let mut flag_strs: Vec<String> = Vec::new();
-
-        for f in flags.clone() {
-            flag_strs.push(format!("{:?}", f));
-        }
-
-        for (i, flag) in flags.into_iter().enumerate() {
-            if cpu.registers.get_flag(flag) != values[i] {
-                return Result::Err(flag);
-            }
+    pub fn assert_flags(cpu: &Cpu, values: &[bool], flags: &[Flag]) -> Result<(), Flag> {
+        for (flag_val, flag) in values.iter().zip(flags.iter()) {
+            assert_eq!(*flag_val, cpu.registers.flag_value(*flag));
         }
 
         Result::Ok(())
@@ -55,10 +50,8 @@ mod common {
     /// * `cpu`
     /// * `values` - Vector specifying values of flags in order of Flag::{Z, N, H, C}
     /// * `operands` - Tuple of two `u8`s of the binary operation being tested for
-    pub fn assert_flags_binop(cpu: &Cpu, values: [bool; 4], operands: (u8, u8)) {
-        let values = values.to_vec();
-
-        let flags = vec![Flag::Z, Flag::N, Flag::H, Flag::C];
+    pub fn assert_flags_binop(cpu: &Cpu, values: &[bool; 4], operands: (&u8, &u8)) {
+        let flags = &[Flag::Z, Flag::N, Flag::H, Flag::C];
         let result = assert_flags(&cpu, values, flags);
 
         if let Err(f) = result {
@@ -69,10 +62,8 @@ mod common {
         }
     }
 
-    pub fn assert_flags_unaop(cpu: &Cpu, values: [bool; 4], operand: u8) {
-        let values = values.to_vec();
-
-        let flags = vec![Flag::Z, Flag::N, Flag::H, Flag::C];
+    pub fn assert_flags_unaop(cpu: &Cpu, values: &[bool; 4], operand: u8) {
+        let flags = &[Flag::Z, Flag::N, Flag::H, Flag::C];
         let result = assert_flags(&cpu, values, flags);
 
         if let Err(f) = result {
@@ -92,7 +83,7 @@ mod common {
 fn cpu_alu_add_bytes_value() {
     let mut cpu = Cpu::new();
 
-    let test_cases: Vec<(u8, u8)> = vec![
+    let test_cases = &[
         (0, 0),
         (1, 1),
         (0xFF, 0xFF),
@@ -104,7 +95,7 @@ fn cpu_alu_add_bytes_value() {
         (12, 35),
     ];
 
-    for (a, b) in &test_cases {
+    for (a, b) in test_cases {
         let result = cpu.alu_add_bytes(*a, *b, false);
         assert_eq!(a.wrapping_add(*b), result);
     }
@@ -114,7 +105,7 @@ fn cpu_alu_add_bytes_value() {
 fn cpu_alu_add_bytes_flag_z() {
     let mut cpu = Cpu::new();
 
-    let test_cases = vec![
+    let test_cases = &[
         // a    b       Z     N      H      C
         ((0x00, 0x00), [true, false, false, false]),
         ((0xFF, 0x01), [true, false, true, true]),
@@ -123,10 +114,10 @@ fn cpu_alu_add_bytes_flag_z() {
     ];
 
     for ((a, b), flags) in test_cases {
-        let result: u8 = cpu.alu_add_bytes(a, b, false);
+        let result: u8 = cpu.alu_add_bytes(*a, *b, false);
         assert_eq!(0, result);
 
-        common::assert_flags_binop(&cpu, flags, (a, b));
+        common::assert_flags_binop(&cpu, &flags, (a, b));
     }
 }
 
@@ -134,7 +125,7 @@ fn cpu_alu_add_bytes_flag_z() {
 fn cpu_alu_add_bytes_flag_h() {
     let mut cpu = Cpu::new();
 
-    let test_cases = vec![
+    let test_cases = &[
         // a    b       Z     N      H      C
         ((0x00, 0x01), [false, false, false, false]), // 1
         ((0x08, 0x07), [false, false, false, false]), // 15
@@ -152,8 +143,8 @@ fn cpu_alu_add_bytes_flag_h() {
     ];
 
     for ((a, b), flags) in test_cases {
-        let result: u8 = cpu.alu_add_bytes(a, b, false);
-        assert_eq!(a.wrapping_add(b), result); // unnecessary?
+        let result: u8 = cpu.alu_add_bytes(*a, *b, false);
+        assert_eq!(a.wrapping_add(*b), result); // unnecessary?
 
         common::assert_flags_binop(&cpu, flags, (a, b));
     }
@@ -163,7 +154,7 @@ fn cpu_alu_add_bytes_flag_h() {
 fn cpu_alu_add_bytes_flag_c() {
     let mut cpu = Cpu::new();
 
-    let test_cases = vec![
+    let test_cases = &[
         // a    b       Z     N      H      C
         ((0x00, 0x00), [true, false, false, false]),
         ((0x00, 0x01), [false, false, false, false]),
@@ -173,8 +164,8 @@ fn cpu_alu_add_bytes_flag_c() {
     ];
 
     for ((a, b), flags) in test_cases {
-        let result: u8 = cpu.alu_add_bytes(a, b, false);
-        assert_eq!(a.wrapping_add(b), result);
+        let result: u8 = cpu.alu_add_bytes(*a, *b, false);
+        assert_eq!(a.wrapping_add(*b), result);
 
         common::assert_flags_binop(&cpu, flags, (a, b));
     }
@@ -183,15 +174,15 @@ fn cpu_alu_add_bytes_flag_c() {
 #[test]
 fn cpu_alu_add_bytes_with_carry() {
     let mut cpu = Cpu::new();
-    let test_cases = vec![
+    let test_cases = &[
         // a    b       Z     N      H      C
         ((0x00, 0x00), [false, false, false, false]),
     ];
 
     for ((a, b), flags) in test_cases {
         cpu.registers.set_flag(Flag::C, true);
-        let result = cpu.alu_add_bytes(a, b, true);
-        assert_eq!(a.wrapping_add(b).wrapping_add(1), result);
+        let result = cpu.alu_add_bytes(*a, *b, true);
+        assert_eq!(a.wrapping_add(*b).wrapping_add(1), result);
 
         common::assert_flags_binop(&cpu, flags, (a, b));
     }
@@ -201,7 +192,7 @@ fn cpu_alu_add_bytes_with_carry() {
 fn cpu_alu_sub_bytes_value() {
     let mut cpu = Cpu::new();
 
-    let test_cases = vec![
+    let test_cases = &[
         (0x00, 0x00),
         (0x01, 0x00),
         (0xFF, 0x32),
@@ -210,8 +201,8 @@ fn cpu_alu_sub_bytes_value() {
     ];
 
     for (a, b) in test_cases {
-        let result = cpu.alu_sub_bytes(a, b, false);
-        assert_eq!(a.wrapping_sub(b), result);
+        let result = cpu.alu_sub_bytes(*a, *b, false);
+        assert_eq!(a.wrapping_sub(*b), result);
     }
 }
 
@@ -222,7 +213,7 @@ fn cpu_alu_sub_bytes_flag_z() {
     // NOTE: Let x - y == 0 => x == y.
     //  shouldn't be possible to underflow into 0 if both are u8?
     //  similar reasonining for why H should never be set if x == y.
-    let test_cases = vec![
+    let test_cases = &[
         // a    b       Z     N      H      C
         ((0x00, 0x00), [true, true, false, false]),
         ((0x01, 0x01), [true, true, false, false]),
@@ -231,8 +222,8 @@ fn cpu_alu_sub_bytes_flag_z() {
     ];
 
     for ((a, b), flags) in test_cases {
-        let result: u8 = cpu.alu_sub_bytes(a, b, false);
-        assert_eq!(a.wrapping_sub(b), result);
+        let result: u8 = cpu.alu_sub_bytes(*a, *b, false);
+        assert_eq!(a.wrapping_sub(*b), result);
 
         common::assert_flags_binop(&cpu, flags, (a, b));
     }
@@ -242,7 +233,7 @@ fn cpu_alu_sub_bytes_flag_z() {
 fn cpu_alu_sub_bytes_flag_h() {
     let mut cpu = Cpu::new();
 
-    let test_cases = vec![
+    let test_cases = &[
         // a    b       Z     N      H      C
         ((0x00, 0x00), [true, true, false, false]),
         ((0x00, 0x01), [false, true, true, true]),
@@ -254,8 +245,8 @@ fn cpu_alu_sub_bytes_flag_h() {
     ];
 
     for ((a, b), flags) in test_cases {
-        let result: u8 = cpu.alu_sub_bytes(a, b, false);
-        assert_eq!(a.wrapping_sub(b), result);
+        let result: u8 = cpu.alu_sub_bytes(*a, *b, false);
+        assert_eq!(a.wrapping_sub(*b), result);
 
         common::assert_flags_binop(&cpu, flags, (a, b));
     }
@@ -265,15 +256,15 @@ fn cpu_alu_sub_bytes_flag_h() {
 fn cpu_alu_sub_bytes_flag_c() {
     let mut cpu = Cpu::new();
 
-    let test_cases = vec![
+    let test_cases = &[
         // a    b       Z     N      H      C
         ((0xFE, 0xFF), [false, true, true, true]),
         ((0x00, 0x01), [false, true, true, true]),
     ];
 
     for ((a, b), flags) in test_cases {
-        let result: u8 = cpu.alu_sub_bytes(a, b, false);
-        assert_eq!(a.wrapping_sub(b), result);
+        let result: u8 = cpu.alu_sub_bytes(*a, *b, false);
+        assert_eq!(a.wrapping_sub(*b), result);
 
         common::assert_flags_binop(&cpu, flags, (a, b));
     }
@@ -283,7 +274,7 @@ fn cpu_alu_sub_bytes_flag_c() {
 fn cpu_alu_sub_bytes_with_carry() {
     let mut cpu = Cpu::new();
 
-    let test_cases = vec![
+    let test_cases = &[
         //  a   b
         (0x01, 0x00),
         (0x01, 0x01),
@@ -293,9 +284,9 @@ fn cpu_alu_sub_bytes_with_carry() {
 
     for (a, b) in test_cases {
         cpu.registers.set_flag(Flag::C, true);
-        let result: u8 = cpu.alu_sub_bytes(a, b, true);
+        let result: u8 = cpu.alu_sub_bytes(*a, *b, true);
 
-        assert_eq!(a.wrapping_sub(b).wrapping_sub(1), result);
+        assert_eq!(a.wrapping_sub(*b).wrapping_sub(1), result);
     }
 }
 
@@ -303,19 +294,19 @@ fn cpu_alu_sub_bytes_with_carry() {
 fn cpu_alu_inc_byte() {
     let mut cpu = Cpu::new();
 
-    let test_cases = vec![
+    let test_cases = &[
         //      Z      N      H
         (0xFE, [false, false, false]),
     ];
 
-    let flags = vec![Flag::Z, Flag::N, Flag::H];
+    let flags = &[Flag::Z, Flag::N, Flag::H];
     for (a, flag_vals) in test_cases {
-        let value = cpu.alu_inc_byte(a);
+        let value = cpu.alu_inc_byte(*a);
 
         assert_eq!(value, a.wrapping_add(1));
 
         // check flag assertion
-        let result = common::assert_flags(&cpu, flag_vals.to_vec(), flags.clone());
+        let result = common::assert_flags(&cpu, flag_vals, flags);
         if let Err(f) = result {
             panic!("Flag assertion failed for {:?} with value {:X}.", f, a);
         }
@@ -326,7 +317,7 @@ fn cpu_alu_inc_byte() {
 fn cpu_alu_dec_byte() {
     let mut cpu = Cpu::new();
 
-    let test_cases = vec![
+    let test_cases = &[
         //        Z      N     H
         (0xFF, [false, true, false]),
         (0x00, [false, true, true]),
@@ -337,14 +328,14 @@ fn cpu_alu_dec_byte() {
         (0x10, [false, true, true]),
     ];
 
-    let flags = vec![Flag::Z, Flag::N, Flag::H];
+    let flags = &[Flag::Z, Flag::N, Flag::H];
     for (a, flag_vals) in test_cases {
-        let value = cpu.alu_dec_byte(a);
+        let value = cpu.alu_dec_byte(*a);
 
         assert_eq!(value, a.wrapping_sub(1));
 
         // check flag assertion
-        let result = common::assert_flags(&cpu, flag_vals.to_vec(), flags.clone());
+        let result = common::assert_flags(&cpu, flag_vals, flags);
         if let Err(f) = result {
             panic!("Flag assertion failed for {:?} with value {:X}.", f, a);
         }
@@ -355,7 +346,7 @@ fn cpu_alu_dec_byte() {
 fn cpu_alu_add_words() {
     let mut cpu = Cpu::new();
 
-    let test_cases = vec![
+    let test_cases = &[
         //                N      H      C
         (0x0000, 0x0000, [false, false, false]),
         (0x1523, 0x2333, [false, false, false]),
@@ -366,12 +357,12 @@ fn cpu_alu_add_words() {
         (0x0FFF, 0x0001, [false, true, false]),
     ];
 
-    let flags = vec![Flag::N, Flag::H, Flag::C];
+    let flags = &[Flag::N, Flag::H, Flag::C];
     for (x, y, flag_vals) in test_cases {
-        let value = cpu.alu_add_words(x, y);
-        assert_eq!(value, x.wrapping_add(y));
+        let value = cpu.alu_add_words(*x, *y);
+        assert_eq!(value, x.wrapping_add(*y));
 
-        let result = common::assert_flags(&cpu, flag_vals.to_vec(), flags.clone());
+        let result = common::assert_flags(&cpu, flag_vals, flags);
         if let Err(f) = result {
             panic!(
                 "Flag assertion failed for {:?} with values {:?}.",
@@ -386,7 +377,7 @@ fn cpu_alu_add_words() {
 fn cpu_alu_and_a() {
     let mut cpu = Cpu::new();
 
-    let test_cases = vec![
+    let test_cases = &[
         // a   y     Z     N     H     C
         (0x00, 0x00, [true, false, true, false]),
         (0x00, 0xFF, [true, false, true, false]),
@@ -396,8 +387,8 @@ fn cpu_alu_and_a() {
     ];
 
     for (a, y, flags) in test_cases {
-        cpu.registers.set_r8(Register8b::A, a);
-        cpu.alu_and_a(y);
+        cpu.registers.set_r8(Register8b::A, *a);
+        cpu.alu_and_a(*y);
 
         assert_eq!(a & y, cpu.registers.get_r8(Register8b::A));
         common::assert_flags_binop(&cpu, flags, (a, y));
@@ -408,7 +399,7 @@ fn cpu_alu_and_a() {
 fn cpu_alu_xor_a() {
     let mut cpu = Cpu::new();
 
-    let test_cases = vec![
+    let test_cases = &[
         // a   y     Z     N     H     C
         (0x00, 0x00, [true, false, false, false]),
         (0xFF, 0xFF, [true, false, false, false]),
@@ -417,8 +408,8 @@ fn cpu_alu_xor_a() {
     ];
 
     for (a, y, flags) in test_cases {
-        cpu.registers.set_r8(Register8b::A, a);
-        cpu.alu_xor_a(y);
+        cpu.registers.set_r8(Register8b::A, *a);
+        cpu.alu_xor_a(*y);
 
         assert_eq!(a ^ y, cpu.registers.get_r8(Register8b::A));
         common::assert_flags_binop(&cpu, flags, (a, y));
@@ -429,7 +420,7 @@ fn cpu_alu_xor_a() {
 fn cpu_alu_or_a() {
     let mut cpu = Cpu::new();
 
-    let test_cases = vec![
+    let test_cases = &[
         // a   y     Z     N     H     C
         (0x00, 0x00, [true, false, false, false]), // TODO more test cases needed
         (0xFF, 0xFF, [false, false, false, false]),
@@ -439,8 +430,8 @@ fn cpu_alu_or_a() {
     ];
 
     for (a, y, flags) in test_cases {
-        cpu.registers.set_r8(Register8b::A, a);
-        cpu.alu_or_a(y);
+        cpu.registers.set_r8(Register8b::A, *a);
+        cpu.alu_or_a(*y);
 
         assert_eq!(a | y, cpu.registers.get_r8(Register8b::A));
         common::assert_flags_binop(&cpu, flags, (a, y));
@@ -452,16 +443,16 @@ fn cpu_alu_cp_a() {
     // flag tests should be covered by cpu_alu_sub_bytes
     let mut cpu = Cpu::new();
 
-    let test_cases = vec![
+    let test_cases = &[
         // a   y     Z     N     H     C
         (0x00, 0x00, [true, true, false, false]),
     ];
 
     for (a, y, flags) in test_cases {
-        cpu.registers.set_r8(Register8b::A, a);
-        cpu.alu_cp_a(y);
+        cpu.registers.set_r8(Register8b::A, *a);
+        cpu.alu_cp_a(*y);
 
-        assert_eq!(a, cpu.registers.get_r8(Register8b::A));
+        assert_eq!(a, &cpu.registers.get_r8(Register8b::A));
         common::assert_flags_binop(&cpu, flags, (a, y));
     }
 }
@@ -470,9 +461,7 @@ fn cpu_alu_cp_a() {
 fn cpu_fetch_byte() {
     let mut cpu = Cpu::new();
 
-    let test_rom: Vec<u8> = vec![
-        0x00, 0x50, 0x12, 0x55
-    ];
+    let test_rom: Vec<u8> = vec![0x00, 0x50, 0x12, 0x55];
     cpu.mmu.load_rom(test_rom.clone());
 
     cpu.registers.pc = 0;
@@ -489,9 +478,7 @@ fn cpu_fetch_byte() {
 fn cpu_fetch_word() {
     let mut cpu = Cpu::new();
 
-    let test_vals: Vec<u16> = vec![
-        0x0000, 0x5012, 0x12AE, 0x5EE5, 0xFFFF, 0x1283,
-    ];
+    let test_vals: Vec<u16> = vec![0x0000, 0x5012, 0x12AE, 0x5EE5, 0xFFFF, 0x1283];
 
     let mut test_rom: Vec<u8> = Vec::new();
     for v in &test_vals {
@@ -500,7 +487,7 @@ fn cpu_fetch_word() {
         test_rom.push(high);
     }
     cpu.mmu.load_rom(test_rom);
-    
+
     cpu.registers.pc = 0;
     let mut test_pc: u16 = 0;
     for v in test_vals {
@@ -579,9 +566,7 @@ fn cpu_instr_ld_r8_r8() {
 
 #[test]
 fn cpu_instr_ld_r16_d16() {
-    let test_cases: Vec<u16> = vec![
-        0x0032, 0x0000, 0x0001, 0xFFFF, 0xFF32, 0x5050, 0x2312,
-    ];
+    let test_cases: Vec<u16> = vec![0x0032, 0x0000, 0x0001, 0xFFFF, 0xFF32, 0x5050, 0x2312];
 
     let r16s = common::registers_16b_no_af();
     let instrs: Vec<u8> = vec![0x01, 0x11, 0x21, 0x31];
@@ -607,9 +592,7 @@ fn cpu_instr_ld_r16_d16() {
 
 #[test]
 fn cpu_instr_ld_r8_d8() {
-    let test_cases: Vec<u8> = vec![
-        0x23, 0x55, 0x00, 0x53, 0xFE, 0xAD, 0xFF,
-    ];
+    let test_cases: Vec<u8> = vec![0x23, 0x55, 0x00, 0x53, 0xFE, 0xAD, 0xFF];
     let instrs: Vec<(u8, Register8b)> = vec![
         (0x06, Register8b::B),
         (0x16, Register8b::D),
@@ -635,13 +618,13 @@ fn cpu_instr_ld_r8_d8() {
 #[test]
 fn cpu_instr_ld_hl_ptr_d8() {
     let test_cases: Vec<(u8, u16)> = vec![
-    //  val     wram addr
-        (0x23, 0xCFFF), 
-        (0x55, 0xDADE), 
-        (0x00, 0xC039), 
-        (0x53, 0xC000), 
-        (0xFE, 0xCAA9), 
-        (0xAD, 0xC0A0), 
+        //  val     wram addr
+        (0x23, 0xCFFF),
+        (0x55, 0xDADE),
+        (0x00, 0xC039),
+        (0x53, 0xC000),
+        (0xFE, 0xCAA9),
+        (0xAD, 0xC0A0),
         (0xFF, 0xC00E),
     ];
 
@@ -663,17 +646,17 @@ fn cpu_instr_ld_hl_ptr_d8() {
 #[test]
 fn cpu_instr_ld_bc_ptr_a() {
     let test_cases: Vec<(u8, u16)> = vec![
-    //  val    addr in 0xC000..=0xDFFF, WRAM range
-        (0x00, 0xC000), 
-        (0x23, 0xC000), 
-        (0x01, 0xC001), 
-        (0xFE, 0xD98F), 
+        //  val    addr in 0xC000..=0xDFFF, WRAM range
+        (0x00, 0xC000),
+        (0x23, 0xC000),
+        (0x01, 0xC001),
+        (0xFE, 0xD98F),
         (0xEE, 0xCDCD),
-        (0x50, 0xD98E), 
+        (0x50, 0xD98E),
     ];
 
     let mut cpu = Cpu::new();
-    cpu.registers.pc = 0;   // test program counter, shouldn't change
+    cpu.registers.pc = 0; // test program counter, shouldn't change
     for (value, address) in test_cases {
         cpu.registers.set_r16(Register16b::BC, address);
         cpu.registers.set_r8(Register8b::A, value);
@@ -688,17 +671,17 @@ fn cpu_instr_ld_bc_ptr_a() {
 #[test]
 fn cpu_instr_ld_de_ptr_a() {
     let test_cases: Vec<(u8, u16)> = vec![
-    //  val    addr in 0xC000..=0xDFFF, WRAM range
-        (0x00, 0xC000), 
-        (0x23, 0xC000), 
-        (0x01, 0xC001), 
-        (0xFE, 0xD98F), 
+        //  val    addr in 0xC000..=0xDFFF, WRAM range
+        (0x00, 0xC000),
+        (0x23, 0xC000),
+        (0x01, 0xC001),
+        (0xFE, 0xD98F),
         (0xEE, 0xCDCD),
-        (0x50, 0xD98E), 
+        (0x50, 0xD98E),
     ];
 
     let mut cpu = Cpu::new();
-    cpu.registers.pc = 0;   // test program counter, shouldn't change
+    cpu.registers.pc = 0; // test program counter, shouldn't change
     for (value, address) in test_cases {
         cpu.registers.set_r16(Register16b::DE, address);
         cpu.registers.set_r8(Register8b::A, value);
@@ -713,24 +696,27 @@ fn cpu_instr_ld_de_ptr_a() {
 #[test]
 fn cpu_instr_ld_hla_ptr_a() {
     let test_cases: Vec<(u8, u16)> = vec![
-    //  val    addr in 0xC000..=0xDFFF, WRAM range
-        (0x00, 0xC000), 
-        (0x23, 0xC000), 
-        (0x01, 0xC001), 
-        (0xFE, 0xD98F), 
+        //  val    addr in 0xC000..=0xDFFF, WRAM range
+        (0x00, 0xC000),
+        (0x23, 0xC000),
+        (0x01, 0xC001),
+        (0xFE, 0xD98F),
         (0xEE, 0xCDCD),
-        (0x50, 0xD98E), 
+        (0x50, 0xD98E),
     ];
 
     let mut cpu = Cpu::new();
-    cpu.registers.pc = 0;   // test program counter, shouldn't change
+    cpu.registers.pc = 0; // test program counter, shouldn't change
     for (value, address) in test_cases {
         cpu.registers.set_r16(Register16b::HL, address);
         cpu.registers.set_r8(Register8b::A, value);
         let cycles = cpu.execute_instr(0x22);
 
         assert_eq!(8, cycles);
-        assert_eq!(address.wrapping_add(1), cpu.registers.get_r16(Register16b::HL));
+        assert_eq!(
+            address.wrapping_add(1),
+            cpu.registers.get_r16(Register16b::HL)
+        );
         assert_eq!(value, cpu.mmu.read_byte(address));
         assert_eq!(cpu.registers.pc, 0);
     }
@@ -739,24 +725,27 @@ fn cpu_instr_ld_hla_ptr_a() {
 #[test]
 fn cpu_instr_ld_hld_ptr_a() {
     let test_cases: Vec<(u8, u16)> = vec![
-    //  val    addr in 0xC000..=0xDFFF, WRAM range
-        (0x00, 0xC000), 
-        (0x23, 0xC000), 
-        (0x01, 0xC001), 
-        (0xFE, 0xD98F), 
+        //  val    addr in 0xC000..=0xDFFF, WRAM range
+        (0x00, 0xC000),
+        (0x23, 0xC000),
+        (0x01, 0xC001),
+        (0xFE, 0xD98F),
         (0xEE, 0xCDCD),
-        (0x50, 0xD98E), 
+        (0x50, 0xD98E),
     ];
 
     let mut cpu = Cpu::new();
-    cpu.registers.pc = 0;   // test program counter, shouldn't change
+    cpu.registers.pc = 0; // test program counter, shouldn't change
     for (value, address) in test_cases {
         cpu.registers.set_r16(Register16b::HL, address);
         cpu.registers.set_r8(Register8b::A, value);
         let cycles = cpu.execute_instr(0x32);
 
         assert_eq!(8, cycles);
-        assert_eq!(address.wrapping_sub(1), cpu.registers.get_r16(Register16b::HL));
+        assert_eq!(
+            address.wrapping_sub(1),
+            cpu.registers.get_r16(Register16b::HL)
+        );
         assert_eq!(value, cpu.mmu.read_byte(address));
         assert_eq!(0, cpu.registers.pc);
     }
@@ -765,23 +754,23 @@ fn cpu_instr_ld_hld_ptr_a() {
 #[test]
 fn cpu_instr_ld_d16_ptr_sp() {
     let test_cases: Vec<(u16, u16)> = vec![
-    //  addr in 0xC000..=0xDFFF, WRAM range, sp
-        (0xC000, 0x8213), 
-        (0xC000, 0x8213), 
-        (0xC001, 0x8213), 
-        (0xD98F, 0x8213), 
-        (0xCDCD, 0x8213), 
-        (0xD98E, 0x8213), 
+        //  addr in 0xC000..=0xDFFF, WRAM range, sp
+        (0xC000, 0x8213),
+        (0xC000, 0x8213),
+        (0xC001, 0x8213),
+        (0xD98F, 0x8213),
+        (0xCDCD, 0x8213),
+        (0xD98E, 0x8213),
     ];
 
     let mut cpu = Cpu::new();
-    cpu.registers.pc = 0;   // test program counter, shouldn't change
+    cpu.registers.pc = 0; // test program counter, shouldn't change
     for (address, stack_pointer) in test_cases {
         cpu.registers.set_r16(Register16b::HL, address);
         let (high, low) = word_to_bytes(address);
         let test_rom: Vec<u8> = vec![0x08, low, high];
         cpu.mmu.load_rom(test_rom);
-        
+
         cpu.registers.pc = 0; // mocked program counter
         cpu.registers.sp = stack_pointer;
 
@@ -825,18 +814,18 @@ fn cpu_instr_inc_byte() {
 #[test]
 fn cpu_instr_inc_hl_ptr() {
     let test_cases: Vec<(u8, u16)> = vec![
-    //  val    addr in 0xC000..=0xDFFF, WRAM range
-        (0x00, 0xC000), 
-        (0x23, 0xC000), 
-        (0x01, 0xC001), 
-        (0xFE, 0xD98F), 
+        //  val    addr in 0xC000..=0xDFFF, WRAM range
+        (0x00, 0xC000),
+        (0x23, 0xC000),
+        (0x01, 0xC001),
+        (0xFE, 0xD98F),
         (0xEE, 0xCDCD),
         (0x50, 0xD98E),
         (0xFF, 0xC949),
     ];
 
     let mut cpu = Cpu::new();
-    cpu.registers.pc = 0;   // test program counter, shouldn't change
+    cpu.registers.pc = 0; // test program counter, shouldn't change
     for (value, address) in test_cases {
         cpu.mmu.write_byte(address, value);
         cpu.registers.set_r16(Register16b::HL, address);
@@ -851,18 +840,18 @@ fn cpu_instr_inc_hl_ptr() {
 #[test]
 fn cpu_instr_dec_hl_ptr() {
     let test_cases: Vec<(u8, u16)> = vec![
-    //  val    addr in 0xC000..=0xDFFF, WRAM range
-        (0x00, 0xC000), 
-        (0x23, 0xC000), 
-        (0x01, 0xC001), 
-        (0xFE, 0xD98F), 
+        //  val    addr in 0xC000..=0xDFFF, WRAM range
+        (0x00, 0xC000),
+        (0x23, 0xC000),
+        (0x01, 0xC001),
+        (0xFE, 0xD98F),
         (0xEE, 0xCDCD),
         (0x50, 0xD98E),
         (0xFF, 0xC949),
     ];
 
     let mut cpu = Cpu::new();
-    cpu.registers.pc = 0;   // test program counter, shouldn't change
+    cpu.registers.pc = 0; // test program counter, shouldn't change
     for (value, address) in test_cases {
         cpu.mmu.write_byte(address, value);
         cpu.registers.set_r16(Register16b::HL, address);
@@ -876,9 +865,7 @@ fn cpu_instr_dec_hl_ptr() {
 
 #[test]
 fn cpu_instr_inc_word() {
-    let test_cases: Vec<u16> = vec![
-        0x0032, 0x0000, 0x0001, 0xFFFF, 0xFF32, 0x5050, 0x2312,
-    ];
+    let test_cases: Vec<u16> = vec![0x0032, 0x0000, 0x0001, 0xFFFF, 0xFF32, 0x5050, 0x2312];
 
     let r16s = common::registers_16b_no_af();
     let instrs: Vec<u8> = vec![0x03, 0x13, 0x23, 0x33];
@@ -890,8 +877,14 @@ fn cpu_instr_inc_word() {
             cpu.registers.set_r16(reg, x);
             cpu.execute_instr(op);
 
-            assert_eq!(x.wrapping_add(1), cpu.registers.get_r16(reg),
-                "Op: 0x{:X}. {:?}, 0x{:X}", op, reg, x);
+            assert_eq!(
+                x.wrapping_add(1),
+                cpu.registers.get_r16(reg),
+                "Op: 0x{:X}. {:?}, 0x{:X}",
+                op,
+                reg,
+                x
+            );
             cpu.registers.set_r16(reg, 0x0000);
         }
     }
@@ -926,9 +919,7 @@ fn cpu_instr_dec_byte() {
 
 #[test]
 fn cpu_instr_dec_word() {
-    let test_cases: Vec<u16> = vec![
-        0x0032, 0x0000, 0x0001, 0xFFFF, 0xFF32, 0x5050, 0x2312,
-    ];
+    let test_cases: Vec<u16> = vec![0x0032, 0x0000, 0x0001, 0xFFFF, 0xFF32, 0x5050, 0x2312];
 
     let r16s = common::registers_16b_no_af();
     let instrs: Vec<u8> = vec![0x0B, 0x1B, 0x2B, 0x3B];
@@ -940,8 +931,14 @@ fn cpu_instr_dec_word() {
             cpu.registers.set_r16(reg, x);
             cpu.execute_instr(op);
 
-            assert_eq!(x.wrapping_sub(1), cpu.registers.get_r16(reg),
-                "Op: 0x{:X}. {:?}, 0x{:X}", op, reg, x);
+            assert_eq!(
+                x.wrapping_sub(1),
+                cpu.registers.get_r16(reg),
+                "Op: 0x{:X}. {:?}, 0x{:X}",
+                op,
+                reg,
+                x
+            );
             cpu.registers.set_r16(reg, 0x0000);
         }
     }
@@ -949,7 +946,7 @@ fn cpu_instr_dec_word() {
 
 #[test]
 fn cpu_instr_add_bytes() {
-    let test_cases: Vec<(u8, u8)> = vec![
+    let test_cases = &[
         // A    r8
         (0x00, 0x00),
         (0x23, 0x33),
@@ -967,15 +964,15 @@ fn cpu_instr_add_bytes() {
     let mut cpu = Cpu::new();
     for (x, y) in test_cases {
         for (op, reg) in instrs.clone() {
-            cpu.registers.set_r8(Register8b::A, x);
-            cpu.registers.set_r8(reg, y);
+            cpu.registers.set_r8(Register8b::A, *x);
+            cpu.registers.set_r8(reg, *y);
 
             cpu.execute_instr(op);
 
             match reg {
                 Register8b::A => {
                     assert_eq!(
-                        y.wrapping_add(y),
+                        y.wrapping_add(*y),
                         cpu.registers.get_r8(Register8b::A),
                         "Op: 0x{:X}. Assertion failed for ADD A, A for operand 0x{:X})",
                         op,
@@ -984,7 +981,7 @@ fn cpu_instr_add_bytes() {
                 }
                 _ => {
                     assert_eq!(
-                        x.wrapping_add(y),
+                        x.wrapping_add(*y),
                         cpu.registers.get_r8(Register8b::A),
                         "Op: 0x{:X}. Assertion failed for ADD A, {:?} for operands (0x{:X}, 0x{:X})",
                         op,
@@ -1000,7 +997,7 @@ fn cpu_instr_add_bytes() {
 
 #[test]
 fn cpu_instr_adc_bytes() {
-    let test_cases: Vec<(u8, u8)> = vec![
+    let test_cases = &[
         // A    r8,  carry
         (0x00, 0x00),
         (0x23, 0x33),
@@ -1018,8 +1015,8 @@ fn cpu_instr_adc_bytes() {
     let mut cpu = Cpu::new();
     for (x, y) in test_cases {
         for (op, reg) in instrs.clone() {
-            cpu.registers.set_r8(Register8b::A, x);
-            cpu.registers.set_r8(reg, y);
+            cpu.registers.set_r8(Register8b::A, *x);
+            cpu.registers.set_r8(reg, *y);
             cpu.registers.set_flag(Flag::C, true);
 
             cpu.execute_instr(op);
@@ -1027,7 +1024,7 @@ fn cpu_instr_adc_bytes() {
             match reg {
                 Register8b::A => {
                     assert_eq!(
-                        y.wrapping_add(y).wrapping_add(1),
+                        y.wrapping_add(*y).wrapping_add(1),
                         cpu.registers.get_r8(Register8b::A),
                         "Op: 0x{:X}. Assertion failed for ADC A, A for operand 0x{:X})",
                         op,
@@ -1036,7 +1033,7 @@ fn cpu_instr_adc_bytes() {
                 }
                 _ => {
                     assert_eq!(
-                        x.wrapping_add(y).wrapping_add(1),
+                        x.wrapping_add(*y).wrapping_add(1),
                         cpu.registers.get_r8(Register8b::A),
                         "Op: 0x{:X}. Assertion failed for ADC A, {:?} for operands (0x{:X}, 0x{:X})",
                         op,
@@ -1052,7 +1049,7 @@ fn cpu_instr_adc_bytes() {
 
 #[test]
 fn cpu_instr_add_words() {
-    let test_cases: Vec<(u16, u16)> = vec![
+    let test_cases = &[
         // HL    r16
         (0x0000, 0x0000),
         (0x1523, 0x2333),
@@ -1070,15 +1067,15 @@ fn cpu_instr_add_words() {
     let mut cpu = Cpu::new();
     for (x, y) in test_cases {
         for (op, reg) in instrs.clone() {
-            cpu.registers.set_r16(Register16b::HL, x);
-            cpu.registers.set_r16(reg, y);
+            cpu.registers.set_r16(Register16b::HL, *x);
+            cpu.registers.set_r16(reg, *y);
 
             cpu.execute_instr(op);
-            
+
             match reg {
                 Register16b::HL => {
                     assert_eq!(
-                        y.wrapping_add(y),
+                        y.wrapping_add(*y),
                         cpu.registers.get_r16(Register16b::HL),
                         "Op: 0x{:X}. Assertion failed for ADD HL, HL for operand 0x{:X})",
                         op,
@@ -1087,7 +1084,7 @@ fn cpu_instr_add_words() {
                 }
                 _ => {
                     assert_eq!(
-                        x.wrapping_add(y),
+                        x.wrapping_add(*y),
                         cpu.registers.get_r16(Register16b::HL),
                         "Op: 0x{:X}. Assertion failed for ADD HL, {:?} for operands (0x{:X}, 0x{:X})",
                         op,
@@ -1104,7 +1101,7 @@ fn cpu_instr_add_words() {
 
 #[test]
 fn cpu_instr_sub_bytes() {
-    let test_cases: Vec<(u8, u8)> = vec![
+    let test_cases = &[
         // A    r8
         (0x00, 0x00),
         (0x23, 0x33),
@@ -1124,15 +1121,15 @@ fn cpu_instr_sub_bytes() {
     let mut cpu = Cpu::new();
     for (x, y) in test_cases {
         for (op, reg) in instrs.clone() {
-            cpu.registers.set_r8(Register8b::A, x);
-            cpu.registers.set_r8(reg, y);
+            cpu.registers.set_r8(Register8b::A, *x);
+            cpu.registers.set_r8(reg, *y);
 
             cpu.execute_instr(op);
 
             match reg {
                 Register8b::A => {
                     assert_eq!(
-                        y.wrapping_sub(y),
+                        y.wrapping_sub(*y),
                         cpu.registers.get_r8(Register8b::A),
                         "Op: 0x{:X}. Assertion failed for SUB A, A for operand 0x{:X})",
                         op,
@@ -1141,7 +1138,7 @@ fn cpu_instr_sub_bytes() {
                 }
                 _ => {
                     assert_eq!(
-                        x.wrapping_sub(y),
+                        x.wrapping_sub(*y),
                         cpu.registers.get_r8(Register8b::A),
                         "Op: 0x{:X}. Assertion failed for SUB A, {:?} for operands (0x{:X}, 0x{:X})",
                         op,
@@ -1157,7 +1154,7 @@ fn cpu_instr_sub_bytes() {
 
 #[test]
 fn cpu_instr_sbc_bytes() {
-    let test_cases: Vec<(u8, u8)> = vec![
+    let test_cases = &[
         // A    r8
         (0x00, 0x00),
         (0x23, 0x33),
@@ -1175,8 +1172,8 @@ fn cpu_instr_sbc_bytes() {
     let mut cpu = Cpu::new();
     for (x, y) in test_cases {
         for (op, reg) in instrs.clone() {
-            cpu.registers.set_r8(Register8b::A, x);
-            cpu.registers.set_r8(reg, y);
+            cpu.registers.set_r8(Register8b::A, *x);
+            cpu.registers.set_r8(reg, *y);
             cpu.registers.set_flag(Flag::C, true);
 
             cpu.execute_instr(op);
@@ -1184,7 +1181,7 @@ fn cpu_instr_sbc_bytes() {
             match reg {
                 Register8b::A => {
                     assert_eq!(
-                        y.wrapping_sub(y).wrapping_sub(1),
+                        y.wrapping_sub(*y).wrapping_sub(1),
                         cpu.registers.get_r8(Register8b::A),
                         "Assertion failed for SBC A, A for operand 0x{:X})",
                         y
@@ -1192,7 +1189,7 @@ fn cpu_instr_sbc_bytes() {
                 }
                 _ => {
                     assert_eq!(
-                        x.wrapping_sub(y).wrapping_sub(1),
+                        x.wrapping_sub(*y).wrapping_sub(1),
                         cpu.registers.get_r8(Register8b::A),
                         "Assertion failed for SBC A, {:?} for operands (0x{:X}, 0x{:X})",
                         reg,
@@ -1207,7 +1204,7 @@ fn cpu_instr_sbc_bytes() {
 
 #[test]
 fn cpu_instr_and_a() {
-    let test_cases: Vec<(u8, u8)> = vec![
+    let test_cases = &[
         // A    r8
         (0x00, 0x00),
         (0x23, 0x33),
@@ -1225,15 +1222,15 @@ fn cpu_instr_and_a() {
     let mut cpu = Cpu::new();
     for (a, y) in test_cases {
         for (op, reg) in instrs.clone() {
-            cpu.registers.set_r8(Register8b::A, a);
-            cpu.registers.set_r8(reg, y);
+            cpu.registers.set_r8(Register8b::A, *a);
+            cpu.registers.set_r8(reg, *y);
 
             cpu.execute_instr(op);
 
             match reg {
                 Register8b::A => {
                     assert_eq!(
-                        y,
+                        *y,
                         cpu.registers.get_r8(Register8b::A),
                         "Op: 0x{:X}. Assertion failed for AND A, A for operand 0x{:X})",
                         op,
@@ -1259,7 +1256,7 @@ fn cpu_instr_and_a() {
 
 #[test]
 fn cpu_instr_xor_a() {
-    let test_cases: Vec<(u8, u8)> = vec![
+    let test_cases = &[
         // A    r8
         (0x00, 0x00),
         (0x23, 0x33),
@@ -1277,8 +1274,8 @@ fn cpu_instr_xor_a() {
     let mut cpu = Cpu::new();
     for (a, y) in test_cases {
         for (op, reg) in instrs.clone() {
-            cpu.registers.set_r8(Register8b::A, a);
-            cpu.registers.set_r8(reg, y);
+            cpu.registers.set_r8(Register8b::A, *a);
+            cpu.registers.set_r8(reg, *y);
 
             cpu.execute_instr(op);
 
@@ -1311,7 +1308,7 @@ fn cpu_instr_xor_a() {
 
 #[test]
 fn cpu_instr_or_a() {
-    let test_cases: Vec<(u8, u8)> = vec![
+    let test_cases = &[
         // A    r8
         (0x00, 0x00),
         (0x23, 0x33),
@@ -1329,15 +1326,15 @@ fn cpu_instr_or_a() {
     let mut cpu = Cpu::new();
     for (a, y) in test_cases {
         for (op, reg) in instrs.clone() {
-            cpu.registers.set_r8(Register8b::A, a);
-            cpu.registers.set_r8(reg, y);
+            cpu.registers.set_r8(Register8b::A, *a);
+            cpu.registers.set_r8(reg, *y);
 
             cpu.execute_instr(op);
 
             match reg {
                 Register8b::A => {
                     assert_eq!(
-                        y,
+                        *y,
                         cpu.registers.get_r8(Register8b::A),
                         "Op: 0x{:X}. Assertion failed for OR A, A for operand 0x{:X})",
                         op,
@@ -1363,7 +1360,7 @@ fn cpu_instr_or_a() {
 
 #[test]
 fn cpu_instr_cp_a() {
-    let test_cases: Vec<(u8, u8)> = vec![
+    let test_cases = &[
         // A    r8
         (0x00, 0x00),
         (0x23, 0x33),
@@ -1381,16 +1378,16 @@ fn cpu_instr_cp_a() {
     let mut cpu = Cpu::new();
     for (a, y) in test_cases {
         for (op, reg) in instrs.clone() {
-            cpu.registers.set_r8(Register8b::A, a);
-            cpu.registers.set_r8(reg, y);
+            cpu.registers.set_r8(Register8b::A, *a);
+            cpu.registers.set_r8(reg, *y);
 
             cpu.execute_instr(op);
 
             match reg {
                 Register8b::A => {
-                    assert_eq!( 
-                        true,   // flag Z is true if y == a
-                        cpu.registers.get_flag(Flag::Z),
+                    assert_eq!(
+                        true, // flag Z is true if y == a
+                        cpu.registers.flag_value(Flag::Z),
                         "Op: 0x{:X}. Assertion failed for CP A, A for operand 0x{:X})",
                         op,
                         y
@@ -1398,8 +1395,8 @@ fn cpu_instr_cp_a() {
                 }
                 _ => {
                     assert_eq!(
-                        a < y,  // flag C is true if y > a.
-                        cpu.registers.get_flag(Flag::C),
+                        a < y, // flag C is true if y > a.
+                        cpu.registers.flag_value(Flag::C),
                         "Op: 0x{:X}. Assertion failed for CP A, {:?} for operands (0x{:X}, 0x{:X})",
                         op,
                         reg,
@@ -1407,7 +1404,7 @@ fn cpu_instr_cp_a() {
                         y
                     );
                     if a == y {
-                        assert!(cpu.registers.get_flag(Flag::Z));
+                        assert!(cpu.registers.flag_value(Flag::Z));
                     }
                 }
             }
@@ -1415,4 +1412,3 @@ fn cpu_instr_cp_a() {
         }
     }
 }
-
