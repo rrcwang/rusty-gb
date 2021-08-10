@@ -194,7 +194,7 @@ impl Registers {
     /// |:-------------:|:--------------------:|
     /// | `true`        | `register.flag == 1` |
     /// | `false `      | `register.flag == 0` |
-    pub fn get_flag(&self, flag: Flag) -> bool {
+    pub fn flag_value(&self, flag: Flag) -> bool {
         let bit: u8 = match flag {
             Flag::Z => (self.f & 0b_1000_0000) >> 7,
             Flag::N => (self.f & 0b_0100_0000) >> 6,
@@ -211,7 +211,7 @@ impl Registers {
 }
 
 impl fmt::Display for Registers {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "A:{:02X} F:{:04b} \
@@ -236,88 +236,82 @@ pub mod test {
     pub mod common {
         use super::super::*;
 
-        pub fn all_registers_8b() -> Vec<Register8b> {
-            vec![
-                Register8b::A,
-                Register8b::F,
-                Register8b::B,
-                Register8b::C,
-                Register8b::D,
-                Register8b::E,
-                Register8b::H,
-                Register8b::L,
-            ]
-        }
+        pub const REGISTERS_8B: &[Register8b] = &[
+            Register8b::A,
+            Register8b::F,
+            Register8b::B,
+            Register8b::C,
+            Register8b::D,
+            Register8b::E,
+            Register8b::H,
+            Register8b::L,
+        ];
 
-        pub fn all_registers_16b() -> Vec<Register16b> {
-            vec![
-                Register16b::AF,
-                Register16b::BC,
-                Register16b::DE,
-                Register16b::HL,
-                Register16b::SP,
-                Register16b::PC,
-            ]
-        }
+        pub const REGISTERS_16B: &[Register16b; 6] = &[
+            Register16b::AF,
+            Register16b::BC,
+            Register16b::DE,
+            Register16b::HL,
+            Register16b::SP,
+            Register16b::PC,
+        ];
 
-        pub fn all_flags() -> Vec<Flag> {
-            vec![Flag::Z, Flag::N, Flag::H, Flag::C]
-        }
+        pub const FLAGS: &[Flag; 4] = &[Flag::Z, Flag::N, Flag::H, Flag::C];
     }
 
     #[test]
     fn register_r8_set_get() {
-        let registers_8b = common::all_registers_8b();
+        let registers_8b = common::REGISTERS_8B;
 
         let mut registers = Registers::new();
 
         for reg in registers_8b {
-            registers.set_r8(reg, 0x1)
+            registers.set_r8(*reg, 0x1)
         }
 
-        let registers_8b = common::all_registers_8b();
+        let registers_8b = common::REGISTERS_8B;
 
         for reg in registers_8b {
-            assert_eq!(1u8, registers.get_r8(reg))
+            assert_eq!(1u8, registers.get_r8(*reg))
         }
     }
 
     #[test]
     fn register_r8_init_zero_get() {
-        let registers_8b = common::all_registers_8b();
+        let registers_8b = common::REGISTERS_8B;
 
         let registers = Registers::new();
 
         for reg in registers_8b {
-            assert_eq!(0u8, registers.get_r8(reg));
+            assert_eq!(0u8, registers.get_r8(*reg));
         }
     }
 
     #[test]
     fn register_r16_init_zero_get() {
-        let registers_16b = common::all_registers_16b();
+        let registers_16b = common::REGISTERS_16B;
 
         let registers = Registers::new();
 
         for reg in registers_16b {
-            assert_eq!(0u16, registers.get_r16(reg));
+            assert_eq!(0u16, registers.get_r16(*reg));
         }
     }
 
     #[test]
     fn register_r16_set_get() {
-        let registers_16b = common::all_registers_16b();
+        let registers_16b = common::REGISTERS_16B;
 
         let mut registers = Registers::new();
 
         for reg in registers_16b {
-            registers.set_r16(reg, 0xF0F0u16)
+            registers.set_r16(*reg, 0xF0F0u16)
         }
 
-        let registers_16b = common::all_registers_16b();
+        let registers_16b = common::REGISTERS_16B;
 
         for reg in registers_16b {
-            assert_eq!(0xF0F0u16, registers.get_r16(reg));
+            assert_eq!(0xF0F0u16, registers.get_r16(*reg));
         }
     }
 
@@ -325,15 +319,15 @@ pub mod test {
     fn register_r16_set_r8_get() {
         let mut registers = Registers::new();
 
-        let registers_16b = common::all_registers_16b();
+        let registers_16b = common::REGISTERS_16B;
 
         for reg_16b in registers_16b {
-            registers.set_r16(reg_16b, 0xF0F0u16)
+            registers.set_r16(*reg_16b, 0xF0F0u16)
         }
 
-        let registers_8b = common::all_registers_8b();
+        let registers_8b = common::REGISTERS_8B;
         for reg_8b in registers_8b {
-            assert_eq!(0xF0u8, registers.get_r8(reg_8b));
+            assert_eq!(0xF0u8, registers.get_r8(*reg_8b));
         }
     }
 
@@ -341,10 +335,10 @@ pub mod test {
     fn register_r8_set_r16_get() {
         let mut registers = Registers::new();
 
-        let registers_8b = common::all_registers_8b();
+        let registers_8b = common::REGISTERS_8B;
 
         for reg_8b in registers_8b {
-            registers.set_r8(reg_8b, 0xF0u8);
+            registers.set_r8(*reg_8b, 0xF0u8);
         }
 
         for reg_16b in vec![
@@ -365,39 +359,39 @@ pub mod test {
 
     #[test]
     fn register_flag_init_zero_get() {
-        let flags = common::all_flags();
+        let flags = common::FLAGS;
 
         let registers = Registers::new();
 
         for flag in flags {
-            assert_eq!(false, registers.get_flag(flag));
+            assert_eq!(false, registers.flag_value(*flag));
         }
     }
 
     #[test]
     fn register_flag_set_clear() {
-        let flags = common::all_flags();
+        let flags = common::FLAGS;
 
         let mut registers = Registers::new();
         // set all flags and check for true
         for flag in flags {
-            registers.set_flag(flag, true);
+            registers.set_flag(*flag, true);
         }
 
-        let flags = common::all_flags();
+        let flags = common::FLAGS;
         for flag in flags {
-            assert_eq!(true, registers.get_flag(flag));
+            assert_eq!(true, registers.flag_value(*flag));
         }
 
-        let flags = common::all_flags();
+        let flags = common::FLAGS;
         // clear all flags and check for false
         for flag in flags {
-            registers.set_flag(flag, false);
+            registers.set_flag(*flag, false);
         }
 
-        let flags = common::all_flags();
+        let flags = common::FLAGS;
         for flag in flags {
-            assert_eq!(false, registers.get_flag(flag));
+            assert_eq!(false, registers.flag_value(*flag));
         }
     }
 
