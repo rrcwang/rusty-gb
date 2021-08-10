@@ -218,7 +218,7 @@ impl Cpu {
         let carry_out = x >> 7;
         let carry_in = self.registers.flag_value(Flag::C) as u8;
         let value = x << 1 | carry_in;
-        
+
         self.registers.set_flag(Flag::Z, value == 0);
         self.registers.set_flag(Flag::N, false);
         self.registers.set_flag(Flag::H, false);
@@ -266,7 +266,8 @@ impl Cpu {
         // DEBUG:
         println!(
             "CPU executing 0x{:X} at PC: {}",
-            instruction, self.registers.pc-1 
+            instruction,
+            self.registers.pc - 1
         );
 
         // 1. decode and execute instruction
@@ -493,7 +494,8 @@ impl Cpu {
                 self.mmu.write_byte(address, value);
 
                 // increment HL
-                self.registers.set_r16(Register16b::HL, address.wrapping_add(1));
+                self.registers
+                    .set_r16(Register16b::HL, address.wrapping_add(1));
 
                 8
             }
@@ -539,7 +541,8 @@ impl Cpu {
             0x2A => {
                 // LD A, (HL+)
                 let address = self.registers.get_r16(Register16b::HL);
-                self.registers.set_r16(Register16b::HL, address.wrapping_add(1));
+                self.registers
+                    .set_r16(Register16b::HL, address.wrapping_add(1));
                 let value = self.mmu.read_byte(address);
                 self.registers.set_r8(Register8b::A, value);
                 8
@@ -571,7 +574,7 @@ impl Cpu {
                 self.registers.set_r8(Register8b::L, value);
                 8
             }
-            0x2F => { 
+            0x2F => {
                 // CPL          | Complement accumulator A
                 let a = self.registers.get_r8(Register8b::A);
                 self.registers.set_r8(Register8b::A, !a);
@@ -593,8 +596,9 @@ impl Cpu {
                 self.mmu.write_byte(address, value);
 
                 // decrement HL
-                self.registers.set_r16(Register16b::HL, address.wrapping_sub(1));
-                
+                self.registers
+                    .set_r16(Register16b::HL, address.wrapping_sub(1));
+
                 8
             }
             0x33 => {
@@ -652,7 +656,8 @@ impl Cpu {
             0x3A => {
                 // LD A, (HL-)
                 let address = self.registers.get_r16(Register16b::HL);
-                self.registers.set_r16(Register16b::HL, address.wrapping_sub(1));
+                self.registers
+                    .set_r16(Register16b::HL, address.wrapping_sub(1));
                 let value = self.mmu.read_byte(address);
                 self.registers.set_r8(Register8b::A, value);
                 8
@@ -1674,7 +1679,7 @@ impl Cpu {
             }
             0xF5 => {
                 // PUSH AF
-                let value = self.registers.get_r16(Register16b::AF) | 0xFFF0; // must clear empty flag bits? 
+                let value = self.registers.get_r16(Register16b::AF) | 0xFFF0; // must clear empty flag bits?
                 self.registers.sp = self.registers.sp.wrapping_sub(2);
                 self.mmu.write_word(self.registers.sp, value);
                 16
@@ -1687,7 +1692,7 @@ impl Cpu {
             }
             0xF8 => {
                 // LD HL, SP + r8
-                let offset = self.fetch_byte() as i8 as u16; // see 0xE8 
+                let offset = self.fetch_byte() as i8 as u16; // see 0xE8
                 let value = self.alu_add_words(self.registers.sp, offset);
                 self.registers.set_r16(Register16b::HL, value);
                 self.registers.set_flag(Flag::Z, false);
@@ -1729,11 +1734,10 @@ impl Cpu {
         // read target and store in value
 
         // interpret for desired instruction
-        
-        // modify value
-        
-        // store back into target
 
+        // modify value
+
+        // store back into target
     }
 
     /// DEBUG FUNCTION

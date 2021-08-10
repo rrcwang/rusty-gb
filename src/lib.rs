@@ -9,14 +9,9 @@
     clippy::use_self,
     clippy::useless_let_if_seq,
     rust_2018_idioms,
-    future_incompatible,
+    future_incompatible
 )]
-
-#![allow(
-    clippy::missing_errors_doc,
-    clippy::match_bool,
-    clippy::map_err_ignore,
-)]
+#![allow(clippy::missing_errors_doc, clippy::match_bool, clippy::map_err_ignore)]
 
 pub mod cpu;
 pub mod memory;

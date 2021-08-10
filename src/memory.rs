@@ -1,5 +1,5 @@
-use std::boxed::Box;
 use crate::utils::*;
+use std::boxed::Box;
 
 // TODO implement memory
 //  * working RAM (WRAM)
@@ -46,7 +46,8 @@ impl Mmu {
             0xA000..=0xBFFF => {
                 unimplemented!("Cartridge RAM read");
             }
-            0xC000..=0xDFFF => { // WRAM read
+            0xC000..=0xDFFF => {
+                // WRAM read
                 // TODO: test
                 self.wram[address as usize - 0xC000]
             }
@@ -90,7 +91,9 @@ impl Mmu {
             0xC000..=0xDFFF => {
                 self.wram[address as usize - 0xC000] = value;
             }
-            _ => { unimplemented!("Memory write") }
+            _ => {
+                unimplemented!("Memory write")
+            }
         };
     }
 

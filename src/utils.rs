@@ -6,7 +6,7 @@
 /// * `value` - u16
 ///
 /// # Outputs
-/// * `(high, low)` - split bytes `value`. 
+/// * `(high, low)` - split bytes `value`.
 ///
 /// # Notes
 /// Gameboy CPU is little-endian, so a word is laid out in memory as:
