@@ -12,7 +12,6 @@ const WRAM_SIZE: usize = 0x1FFF;
 const REGS_SIZE: usize = 0x7F;
 
 pub struct Mmu {
-    // TODO: emulate memory mapping
     wram: Vec<u8>,
     io_registers: Vec<u8>,
     interrupt_enable: bool,
@@ -69,8 +68,6 @@ impl Mmu {
                 true => 1,
                 false => 0,
             },
-            // should never happen because input is u16
-            _ => panic!("Invalid memory address read!"),
         }
     }
 
@@ -86,7 +83,9 @@ impl Mmu {
         match address {
             0x0000..=0x7FFF => {
                 // fixed ROM
-                self.mbc.write_byte(address, value);
+                self.mbc
+                    .write_byte(address, value)
+                    .expect("memory write in valid range");
             }
             0xC000..=0xDFFF => {
                 self.wram[address as usize - 0xC000] = value;
@@ -106,8 +105,9 @@ impl Mmu {
 
     /// TODO: load game program to ROM
     pub fn load_rom(&mut self, data: Vec<u8>) -> () {
-        for (i, instr) in data.iter().enumerate() {
-            if let Err(_) = self.mbc.write_byte(i as u16, *instr) {
+        for (i, instr) in data.into_iter().enumerate() {
+            // TODO: handle his error
+            if let Err(_) = self.mbc.write_byte(i as u16, instr) {
                 panic!("ROM loading error! Illegal write to ROM address 0x{:X}", i);
             }
         }
