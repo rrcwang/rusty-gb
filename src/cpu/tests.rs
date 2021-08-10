@@ -456,7 +456,7 @@ fn cpu_alu_cp_a() {
         common::assert_flags_binop(&cpu, flags, (a, y));
     }
 }
-/// TODO: move integration test
+
 #[test]
 fn cpu_fetch_byte() {
     let mut cpu = Cpu::new();
@@ -473,7 +473,6 @@ fn cpu_fetch_byte() {
     }
 }
 
-/// TODO: move integration test
 #[test]
 fn cpu_fetch_word() {
     let mut cpu = Cpu::new();
@@ -503,9 +502,6 @@ fn cpu_fetch_word() {
 // Should verify that the correct registers are set.
 // The flags should be checked as well if not covered by
 // the ALU unit tests above.
-
-// This is an integration test... requies MMU. not sure where to move??
-// This works for now. Consider rewriting this using "Cpu::execute_instr() if Mmu interface changes".
 #[test]
 fn cpu_instr_ld_r8_r8() {
     let mut cpu = Cpu::new();
@@ -518,7 +514,6 @@ fn cpu_instr_ld_r8_r8() {
     let mut ops: Vec<u8> = Vec::new();
     for reg_to in registers_8b.clone() {
         for reg_from in registers_8b.clone() {
-            // println!("(0x{:X}, {:?}, {:?})", op_code, reg_from, reg_to);
             test_cases.push((op_code, reg_to, reg_from));
             ops.push(op_code);
 
