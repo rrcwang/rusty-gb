@@ -4,25 +4,22 @@ use super::*;
 mod common {
     use super::super::*;
 
-    pub fn registers_8b_no_f() -> Vec<Register8b> {
-        vec![
-            Register8b::B,
-            Register8b::C,
-            Register8b::D,
-            Register8b::E,
-            Register8b::H,
-            Register8b::L,
-            Register8b::A,
-        ]
-    }
-    pub fn registers_16b_no_af() -> Vec<Register16b> {
-        vec![
-            Register16b::BC,
-            Register16b::DE,
-            Register16b::HL,
-            Register16b::SP,
-        ]
-    }
+    pub const REGISTERS_8B_NO_F: &[Register8b] = &[
+        Register8b::B,
+        Register8b::C,
+        Register8b::D,
+        Register8b::E,
+        Register8b::H,
+        Register8b::L,
+        Register8b::A,
+    ];
+    
+    pub const REGISTERS_16B_NO_AF: &[Register16b] = &[
+        Register16b::BC,
+        Register16b::DE,
+        Register16b::HL,
+        Register16b::SP,
+    ];
 
     /// Tests that the CPU registers are set correctly
     ///
@@ -506,7 +503,7 @@ fn cpu_fetch_word() {
 fn cpu_instr_ld_r8_r8() {
     let mut cpu = Cpu::new();
 
-    let registers_8b = common::registers_8b_no_f();
+    let registers_8b = common::REGISTERS_8B_NO_F;
 
     // generate all LD test cases
     let mut test_cases: Vec<(u8, Register8b, Register8b)> = Vec::new();
@@ -514,7 +511,7 @@ fn cpu_instr_ld_r8_r8() {
     let mut ops: Vec<u8> = Vec::new();
     for reg_to in registers_8b.clone() {
         for reg_from in registers_8b.clone() {
-            test_cases.push((op_code, reg_to, reg_from));
+            test_cases.push((op_code, *reg_to, *reg_from));
             ops.push(op_code);
 
             op_code += 1;
@@ -563,7 +560,7 @@ fn cpu_instr_ld_r8_r8() {
 fn cpu_instr_ld_r16_d16() {
     let test_cases: Vec<u16> = vec![0x0032, 0x0000, 0x0001, 0xFFFF, 0xFF32, 0x5050, 0x2312];
 
-    let r16s = common::registers_16b_no_af();
+    let r16s = common::REGISTERS_16B_NO_AF;
     let instrs: Vec<u8> = vec![0x01, 0x11, 0x21, 0x31];
     let instrs = instrs.into_iter().zip(r16s);
 
@@ -579,7 +576,7 @@ fn cpu_instr_ld_r16_d16() {
             cpu.fetch_and_execute();
 
             assert_eq!(3, cpu.registers.pc);
-            let reg_val = cpu.registers.get_r16(reg);
+            let reg_val = cpu.registers.get_r16(*reg);
             assert_eq!(x, reg_val, "0x{:X}, 0x{:X}", x, reg_val);
         }
     }
@@ -783,7 +780,7 @@ fn cpu_instr_inc_byte() {
 
     let mut cpu = Cpu::new();
 
-    let r8s = common::registers_8b_no_f();
+    let r8s = common::REGISTERS_8B_NO_F;
     let instrs: Vec<u8> = vec![
         0x04, // B
         0x0C, // C
@@ -798,10 +795,10 @@ fn cpu_instr_inc_byte() {
 
     for test_value in test_cases {
         for (op, reg) in instrs.clone() {
-            cpu.registers.set_r8(reg, test_value);
+            cpu.registers.set_r8(*reg, test_value);
             cpu.execute_instr(op);
 
-            assert_eq!(cpu.registers.get_r8(reg), test_value.wrapping_add(1));
+            assert_eq!(cpu.registers.get_r8(*reg), test_value.wrapping_add(1));
         }
     }
 }
@@ -862,25 +859,25 @@ fn cpu_instr_dec_hl_ptr() {
 fn cpu_instr_inc_word() {
     let test_cases: Vec<u16> = vec![0x0032, 0x0000, 0x0001, 0xFFFF, 0xFF32, 0x5050, 0x2312];
 
-    let r16s = common::registers_16b_no_af();
+    let r16s = common::REGISTERS_16B_NO_AF;
     let instrs: Vec<u8> = vec![0x03, 0x13, 0x23, 0x33];
     let instrs = instrs.into_iter().zip(r16s);
 
     let mut cpu = Cpu::new();
     for x in test_cases {
         for (op, reg) in instrs.clone() {
-            cpu.registers.set_r16(reg, x);
+            cpu.registers.set_r16(*reg, x);
             cpu.execute_instr(op);
 
             assert_eq!(
                 x.wrapping_add(1),
-                cpu.registers.get_r16(reg),
+                cpu.registers.get_r16(*reg),
                 "Op: 0x{:X}. {:?}, 0x{:X}",
                 op,
                 reg,
                 x
             );
-            cpu.registers.set_r16(reg, 0x0000);
+            cpu.registers.set_r16(*reg, 0x0000);
         }
     }
 }
@@ -889,7 +886,7 @@ fn cpu_instr_inc_word() {
 fn cpu_instr_dec_byte() {
     let test_cases: Vec<u8> = vec![0x00, 0x01, 0x10, 0x0F, 0xFF];
 
-    let r8s = common::registers_8b_no_f();
+    let r8s = common::REGISTERS_8B_NO_F;
     let instrs: Vec<u8> = vec![
         0x05, // B
         0x0D, // C
@@ -904,10 +901,10 @@ fn cpu_instr_dec_byte() {
     let mut cpu = Cpu::new();
     for test_value in test_cases {
         for (op, reg) in instrs.clone() {
-            cpu.registers.set_r8(reg, test_value);
+            cpu.registers.set_r8(*reg, test_value);
             cpu.execute_instr(op);
 
-            assert_eq!(cpu.registers.get_r8(reg), test_value.wrapping_sub(1));
+            assert_eq!(cpu.registers.get_r8(*reg), test_value.wrapping_sub(1));
         }
     }
 }
@@ -916,25 +913,25 @@ fn cpu_instr_dec_byte() {
 fn cpu_instr_dec_word() {
     let test_cases: Vec<u16> = vec![0x0032, 0x0000, 0x0001, 0xFFFF, 0xFF32, 0x5050, 0x2312];
 
-    let r16s = common::registers_16b_no_af();
+    let r16s = common::REGISTERS_16B_NO_AF;
     let instrs: Vec<u8> = vec![0x0B, 0x1B, 0x2B, 0x3B];
     let instrs = instrs.into_iter().zip(r16s);
 
     let mut cpu = Cpu::new();
     for x in test_cases {
         for (op, reg) in instrs.clone() {
-            cpu.registers.set_r16(reg, x);
+            cpu.registers.set_r16(*reg, x);
             cpu.execute_instr(op);
 
             assert_eq!(
                 x.wrapping_sub(1),
-                cpu.registers.get_r16(reg),
+                cpu.registers.get_r16(*reg),
                 "Op: 0x{:X}. {:?}, 0x{:X}",
                 op,
                 reg,
                 x
             );
-            cpu.registers.set_r16(reg, 0x0000);
+            cpu.registers.set_r16(*reg, 0x0000);
         }
     }
 }
@@ -952,7 +949,7 @@ fn cpu_instr_add_bytes() {
         (0x55, 0x27),
     ];
 
-    let r8s = common::registers_8b_no_f();
+    let r8s = common::REGISTERS_8B_NO_F;
     let instrs: Vec<u8> = vec![0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x87];
     let instrs = instrs.into_iter().zip(r8s);
 
@@ -960,7 +957,7 @@ fn cpu_instr_add_bytes() {
     for (x, y) in test_cases {
         for (op, reg) in instrs.clone() {
             cpu.registers.set_r8(Register8b::A, *x);
-            cpu.registers.set_r8(reg, *y);
+            cpu.registers.set_r8(*reg, *y);
 
             cpu.execute_instr(op);
 
@@ -1003,7 +1000,7 @@ fn cpu_instr_adc_bytes() {
         (0x55, 0x27),
     ];
 
-    let r8s = common::registers_8b_no_f();
+    let r8s = common::REGISTERS_8B_NO_F;
     let instrs: Vec<u8> = vec![0x88, 0x89, 0x8A, 0x8B, 0x8C, 0x8D, 0x8F];
     let instrs = instrs.into_iter().zip(r8s);
 
@@ -1011,7 +1008,7 @@ fn cpu_instr_adc_bytes() {
     for (x, y) in test_cases {
         for (op, reg) in instrs.clone() {
             cpu.registers.set_r8(Register8b::A, *x);
-            cpu.registers.set_r8(reg, *y);
+            cpu.registers.set_r8(*reg, *y);
             cpu.registers.set_flag(Flag::C, true);
 
             cpu.execute_instr(op);
@@ -1055,7 +1052,7 @@ fn cpu_instr_add_words() {
         (0x5235, 0x2700),
     ];
 
-    let r16s = common::registers_16b_no_af();
+    let r16s = common::REGISTERS_16B_NO_AF;
     let instrs: Vec<u8> = vec![0x09, 0x19, 0x29, 0x39];
     let instrs = instrs.into_iter().zip(r16s);
 
@@ -1063,7 +1060,7 @@ fn cpu_instr_add_words() {
     for (x, y) in test_cases {
         for (op, reg) in instrs.clone() {
             cpu.registers.set_r16(Register16b::HL, *x);
-            cpu.registers.set_r16(reg, *y);
+            cpu.registers.set_r16(*reg, *y);
 
             cpu.execute_instr(op);
 
@@ -1109,7 +1106,7 @@ fn cpu_instr_sub_bytes() {
         (0x12, 0x55),
     ];
 
-    let r8s = common::registers_8b_no_f();
+    let r8s = common::REGISTERS_8B_NO_F;
     let instrs: Vec<u8> = vec![0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x97];
     let instrs = instrs.into_iter().zip(r8s);
 
@@ -1117,7 +1114,7 @@ fn cpu_instr_sub_bytes() {
     for (x, y) in test_cases {
         for (op, reg) in instrs.clone() {
             cpu.registers.set_r8(Register8b::A, *x);
-            cpu.registers.set_r8(reg, *y);
+            cpu.registers.set_r8(*reg, *y);
 
             cpu.execute_instr(op);
 
@@ -1160,7 +1157,7 @@ fn cpu_instr_sbc_bytes() {
         (0x55, 0x27),
     ];
 
-    let r8s = common::registers_8b_no_f();
+    let r8s = common::REGISTERS_8B_NO_F;
     let instrs: Vec<u8> = vec![0x98, 0x99, 0x9A, 0x9B, 0x9C, 0x9D, 0x9F];
     let instrs = instrs.into_iter().zip(r8s);
 
@@ -1168,7 +1165,7 @@ fn cpu_instr_sbc_bytes() {
     for (x, y) in test_cases {
         for (op, reg) in instrs.clone() {
             cpu.registers.set_r8(Register8b::A, *x);
-            cpu.registers.set_r8(reg, *y);
+            cpu.registers.set_r8(*reg, *y);
             cpu.registers.set_flag(Flag::C, true);
 
             cpu.execute_instr(op);
@@ -1210,7 +1207,7 @@ fn cpu_instr_and_a() {
         (0x55, 0x27),
     ];
 
-    let r8s = common::registers_8b_no_f();
+    let r8s = common::REGISTERS_8B_NO_F;
     let instrs: Vec<u8> = vec![0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA7];
     let instrs = instrs.into_iter().zip(r8s);
 
@@ -1218,7 +1215,7 @@ fn cpu_instr_and_a() {
     for (a, y) in test_cases {
         for (op, reg) in instrs.clone() {
             cpu.registers.set_r8(Register8b::A, *a);
-            cpu.registers.set_r8(reg, *y);
+            cpu.registers.set_r8(*reg, *y);
 
             cpu.execute_instr(op);
 
@@ -1262,7 +1259,7 @@ fn cpu_instr_xor_a() {
         (0x55, 0x27),
     ];
 
-    let r8s = common::registers_8b_no_f();
+    let r8s = common::REGISTERS_8B_NO_F;
     let instrs: Vec<u8> = vec![0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD, 0xAF];
     let instrs = instrs.into_iter().zip(r8s);
 
@@ -1270,7 +1267,7 @@ fn cpu_instr_xor_a() {
     for (a, y) in test_cases {
         for (op, reg) in instrs.clone() {
             cpu.registers.set_r8(Register8b::A, *a);
-            cpu.registers.set_r8(reg, *y);
+            cpu.registers.set_r8(*reg, *y);
 
             cpu.execute_instr(op);
 
@@ -1314,7 +1311,7 @@ fn cpu_instr_or_a() {
         (0x55, 0x27),
     ];
 
-    let r8s = common::registers_8b_no_f();
+    let r8s = common::REGISTERS_8B_NO_F;
     let instrs: Vec<u8> = vec![0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB7];
     let instrs = instrs.into_iter().zip(r8s);
 
@@ -1322,7 +1319,7 @@ fn cpu_instr_or_a() {
     for (a, y) in test_cases {
         for (op, reg) in instrs.clone() {
             cpu.registers.set_r8(Register8b::A, *a);
-            cpu.registers.set_r8(reg, *y);
+            cpu.registers.set_r8(*reg, *y);
 
             cpu.execute_instr(op);
 
@@ -1366,7 +1363,7 @@ fn cpu_instr_cp_a() {
         (0x55, 0x27),
     ];
 
-    let r8s = common::registers_8b_no_f();
+    let r8s = common::REGISTERS_8B_NO_F;
     let instrs: Vec<u8> = vec![0xB8, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBF];
     let instrs = instrs.into_iter().zip(r8s);
 
@@ -1374,7 +1371,7 @@ fn cpu_instr_cp_a() {
     for (a, y) in test_cases {
         for (op, reg) in instrs.clone() {
             cpu.registers.set_r8(Register8b::A, *a);
-            cpu.registers.set_r8(reg, *y);
+            cpu.registers.set_r8(*reg, *y);
 
             cpu.execute_instr(op);
 
