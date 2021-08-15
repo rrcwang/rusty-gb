@@ -13,7 +13,7 @@ mod common {
         Register8b::L,
         Register8b::A,
     ];
-    
+
     pub const REGISTERS_16B_NO_AF: &[Register16b] = &[
         Register16b::BC,
         Register16b::DE,

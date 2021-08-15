@@ -65,19 +65,15 @@ impl Cpu {
     ///
     /// **NOTE:** one CPU cycle/"M-cycle" == four clock ticks/"T-states"
     pub fn fetch_and_execute(&mut self) -> u8 {
-        // TODO: fetch OP code from ROM
-        // 0. fetch next instruction, pointed to by PC
         // let instruction: u8 = 0x00;
         let instruction: u8 = self.fetch_byte();
 
-        // DEBUG:
         dbg!(
             "CPU executing 0x{:X} at PC: {}",
             instruction,
             self.registers.pc - 1
         );
 
-        // 1. decode and execute instruction
         self.execute_instr(instruction)
     }
 

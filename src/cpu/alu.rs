@@ -1,7 +1,6 @@
 use super::*;
 
 impl Cpu {
-    
     /// Adds two byte length values and sets the appropriate flags in the F register for CPU instructions
     ///
     /// Applicable for instructions 0x80..0x8F
@@ -192,7 +191,20 @@ impl Cpu {
     pub(in crate::cpu) fn bit_op_rlc(&mut self, x: u8) -> u8 {
         let carry_out = x >> 7;
         let carry_in = self.registers.flag_value(Flag::C) as u8;
-        let value = x << 1 | carry_in;
+        let value = (x << 1) | carry_in;
+
+        self.registers.set_flag(Flag::Z, value == 0);
+        self.registers.set_flag(Flag::N, false);
+        self.registers.set_flag(Flag::H, false);
+        self.registers.set_flag(Flag::C, carry_out == 1);
+
+        value
+    }
+
+    pub(in crate::cpu) fn bit_op_rrc(&mut self, x: u8) -> u8 {
+        let carry_out = x >> 7;
+        let carry_in = self.registers.flag_value(Flag::C) as u8;
+        let value = (x << 1) | carry_in;
 
         self.registers.set_flag(Flag::Z, value == 0);
         self.registers.set_flag(Flag::N, false);

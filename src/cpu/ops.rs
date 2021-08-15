@@ -54,15 +54,19 @@ impl Cpu {
             0x06 => {
                 // LD B, d8
                 let value: u8 = self.fetch_byte();
+
                 self.registers.set_r8(Register8b::B, value);
+
                 8
             }
             0x07 => {
-                // TODO
                 // RLCA
-                self.unimpl_instr();
-                self.registers.set_r8(Register8b::F, 0b_0000_0000);
-                // TODO: set carry flag accordingly
+                let mut value = self.registers.get_r8(Register8b::A);
+                value = self.bit_op_rlc(value);
+
+                self.registers.set_r8(Register8b::A, value);
+                self.registers.set_flag(Flag::C, true);
+
                 4
             }
             0x08 => {
@@ -75,8 +79,10 @@ impl Cpu {
                 // ADD HL, BC   | 0x09           | add BC to HL
                 let hl = self.registers.get_r16(Register16b::HL);
                 let bc = self.registers.get_r16(Register16b::BC);
+
                 let result = self.alu_add_words(hl, bc);
                 self.registers.set_r16(Register16b::HL, result);
+
                 8
             }
             0x0A => {
@@ -1275,8 +1281,6 @@ impl Cpu {
             }
             0xCB => {
                 // PREFIX
-                self.unimpl_instr();
-
                 let instr = self.fetch_byte();
                 self.execute_prefixed_instr(instr)
             }
