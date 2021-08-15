@@ -8,8 +8,7 @@
     clippy::string_lit_as_bytes,
     clippy::use_self,
     clippy::useless_let_if_seq,
-    rust_2018_idioms,
-    future_incompatible
+    rust_2018_idioms
 )]
 #![allow(clippy::missing_errors_doc, clippy::match_bool, clippy::map_err_ignore)]
 

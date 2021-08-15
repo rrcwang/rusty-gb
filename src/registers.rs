@@ -4,6 +4,7 @@
 use crate::utils::{bytes_to_word, word_to_bytes};
 use std::fmt;
 
+#[derive(Debug)]
 pub struct Registers {
     // 8 bit registers
     a: u8,
@@ -18,6 +19,7 @@ pub struct Registers {
     pub sp: u16,
     pub pc: u16,
 }
+
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Register8b {
     A,

@@ -34,7 +34,6 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
-
 # General
 .DS_Store
 .AppleDouble
@@ -61,6 +60,8 @@ Icon
 Network Trash Folder
 Temporary Items
 .apdisk
+
+# temp excel file
 ~$op_code_progress.xlsx
 
 # IDE
