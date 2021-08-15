@@ -396,26 +396,4 @@ pub mod test {
             assert_eq!(false, registers.flag_value(*flag));
         }
     }
-
-    #[test]
-    #[ignore] // time consuming test
-    fn benchmark_16b_write() {
-        use std::time::Instant;
-
-        let mut regs = Registers::new();
-
-        let n_test: u32 = 100000000;
-
-        let now = Instant::now();
-
-        for _ in 0..n_test {
-            regs.set_r16(Register16b::AF, 0xFFFF);
-            regs.set_r16(Register16b::AF, 0x0000);
-        }
-
-        println!("u16 set time: {} ms", now.elapsed().as_millis());
-        // on average, about 4.0s.
-        // unsafe, raw pointer access is about 3.6s.
-        // maybe change implementation for performance if necessary??
-    }
 }
