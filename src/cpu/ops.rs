@@ -12,7 +12,7 @@ impl Cpu {
     /// `instruction: u16` - Compiled machine code instruction for the CPU
     ///
     /// # Return value
-    /// `t_states: u8` - Number of clock ticks taken to run instruction
+    /// `t_states: u8` - Number of clock ticks taken to run instruction. Doesn't simulate per clock cycle right now, only multiples of 4
     pub(crate) fn execute_instr(&mut self, instruction: u8) -> u8 {
         match instruction {
             // 0x00 -> 0x0F
@@ -313,6 +313,7 @@ impl Cpu {
                 self.registers.set_r8(Register8b::A, !a);
                 self.registers.set_flag(Flag::N, true);
                 self.registers.set_flag(Flag::H, true);
+                "asdasd";
                 4
             }
             // 0x30 -> 0x3F

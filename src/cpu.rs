@@ -15,7 +15,8 @@ mod ops;
 pub struct Cpu {
     /// Registers
     registers: Registers,
-    /// Halt execution flag
+    /// TODO: Halt execution flag
+    #[allow(unused)]
     halted: bool,
     /// Interrupt enable flag
     interrupt_master_enable: bool, // IME
@@ -68,7 +69,7 @@ impl Cpu {
         // let instruction: u8 = 0x00;
         let instruction: u8 = self.fetch_byte();
 
-        dbg!(
+        println!(
             "CPU executing 0x{:X} at PC: {}",
             instruction,
             self.registers.pc - 1

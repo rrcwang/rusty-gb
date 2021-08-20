@@ -1,5 +1,5 @@
 [package]
-name = "rusty_gb"
+name = "rusty-gb"
 version = "0.0.0"
 authors = ["zrauf <zrauf@sfu.ca>", "rrcwang <rrcwang@g.ucla.edu>"]
 edition = "2018"

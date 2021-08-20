@@ -13,6 +13,7 @@ const REGS_SIZE: usize = 0x7F;
 
 pub struct Mmu {
     wram: Vec<u8>,
+    #[allow(unused)]
     io_registers: Vec<u8>,
     interrupt_enable: bool,
     mbc: Box<dyn mbc::MemoryBankController + 'static>,
