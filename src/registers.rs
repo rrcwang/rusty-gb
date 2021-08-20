@@ -21,6 +21,7 @@ pub struct Registers {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
+#[repr(u8)]
 pub enum Register8b {
     A,
     F,
@@ -33,6 +34,7 @@ pub enum Register8b {
 }
 
 #[derive(Debug, Copy, Clone)]
+#[repr(u8)]
 pub enum Register16b {
     AF,
     BC,
@@ -43,6 +45,7 @@ pub enum Register16b {
 }
 
 #[derive(Debug, Copy, Clone)]
+#[repr(u8)]
 pub enum Flag {
     Z, // zero flag
     N, // add/sub

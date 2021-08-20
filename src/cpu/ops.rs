@@ -65,7 +65,7 @@ impl Cpu {
                 value = self.bit_op_rlc(value);
 
                 self.registers.set_r8(Register8b::A, value);
-                self.registers.set_flag(Flag::C, true);
+                self.registers.set_flag(Flag::Z, false);
 
                 4
             }
@@ -121,7 +121,7 @@ impl Cpu {
                 8
             }
             0x0F => {
-                // RLCA
+                // RRCA
                 self.unimpl_instr();
                 4
             }
@@ -313,7 +313,6 @@ impl Cpu {
                 self.registers.set_r8(Register8b::A, !a);
                 self.registers.set_flag(Flag::N, true);
                 self.registers.set_flag(Flag::H, true);
-                "asdasd";
                 4
             }
             // 0x30 -> 0x3F
