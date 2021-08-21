@@ -34,10 +34,12 @@ mod common {
     ///                         then only returns the first.
     pub fn assert_flags(cpu: &Cpu, values: &[bool], flags: &[Flag]) -> Result<(), Flag> {
         for (flag_val, flag) in values.iter().zip(flags.iter()) {
-            assert_eq!(*flag_val, cpu.registers.flag_value(*flag));
+            if *flag_val != cpu.registers.flag_value(*flag) {
+                return Err(*flag);
+            }
         }
 
-        Result::Ok(())
+        Ok(())
     }
 
     /// Assert flags for binary operation with bytes (u8)
@@ -53,7 +55,7 @@ mod common {
 
         if let Err(f) = result {
             panic!(
-                "Flag assertion failed for {:?} with operands (0x{:X}, 0x{:X})",
+                "Flag assertion failed for flag {:?} with operands (0x{:X}, 0x{:X})",
                 f, operands.0, operands.1
             );
         }
@@ -65,7 +67,7 @@ mod common {
 
         if let Err(f) = result {
             panic!(
-                "Flag assertion failed for {:?} with operand {:X}",
+                "Flag assertion failed for flag {:?} with operand {:X}",
                 f, operand
             );
         }

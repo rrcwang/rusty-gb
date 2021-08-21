@@ -23,7 +23,7 @@ impl Cpu {
 
         let result = x.wrapping_add(y);
 
-        self.registers.set_flag(Flag::Z, result == 0);
+        self.registers.set_flag(Flag::Z, result & 0x00FF == 0);
         self.registers.set_flag(Flag::N, false);
         // half-carry: https://stackoverflow.com/questions/62006764/how-is-xor-applied-when-determining-carry
         //  x + y == x ^ y ^ carry_bits
@@ -33,9 +33,7 @@ impl Cpu {
             .set_flag(Flag::H, ((x ^ y ^ result) & 0x10) != 0);
         self.registers.set_flag(Flag::C, (result & 0x100) != 0);
 
-        let result = result as u8;
-
-        result // return 8-bit
+        result as u8 // return 8-bit
     }
 
     /// Computes `x - y` and sets the relevant flags.
@@ -55,14 +53,12 @@ impl Cpu {
 
         let result = x.wrapping_sub(y);
 
-        self.registers.set_flag(Flag::Z, result == 0);
+        self.registers.set_flag(Flag::Z, result & 0x00FF == 0);
         self.registers.set_flag(Flag::N, true);
         self.registers.set_flag(Flag::H, (y & 0x0F) > (x & 0x0F)); // x ^ (!y) ^ result TODO: check potential off-by-one?
         self.registers.set_flag(Flag::C, (result & 0x100) != 0); // should work due to two's complement subtraction? TODO: verify
 
-        let result = result as u8;
-
-        result // return 8-bit
+        result as u8
     }
 
     /// Adds two unsigned words, and sets the appropriate flags.
