@@ -63,8 +63,8 @@ impl Cpu {
 
     /// Adds two unsigned words, and sets the appropriate flags.
     ///
-    /// Implemented as chaining two byte lenght adds together.
-    /// Used in ADD HL, r16 instructions
+    /// Implemented as chaining two byte length adds together.
+    /// Used in ADD HL, r16 instructions.
     ///
     /// # Arguments
     /// * `(x, y)` - `u16`s
@@ -74,8 +74,8 @@ impl Cpu {
     ///
     /// # Flags
     /// * `N = 0`
-    /// * `H` if bit 15 overflows
-    /// * `C` if bit 11 overflows
+    /// * `H` if bit 11 overflows  TODO: verify this
+    /// * `C` if bit 15 overflows
     pub(in crate::cpu) fn alu_add_words(&mut self, x: u16, y: u16) -> u16 {
         let (x_high, x_low) = word_to_bytes(x);
         let (y_high, y_low) = word_to_bytes(y);

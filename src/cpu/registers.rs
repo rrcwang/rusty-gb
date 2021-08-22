@@ -1,5 +1,4 @@
-// registers.rs
-// Implements the CPU registers
+//! Implements the CPU registers
 
 use crate::utils::{bytes_to_word, word_to_bytes};
 use std::fmt;
@@ -20,7 +19,7 @@ pub struct Registers {
     pub pc: u16,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone)]
 #[repr(u8)]
 pub enum Register8b {
     A,
@@ -40,16 +39,20 @@ pub enum Register16b {
     BC,
     DE,
     HL,
-    SP, // stack pointer
+    SP,
+    // stack pointer
     PC, // program counter
 }
 
 #[derive(Debug, Copy, Clone)]
 #[repr(u8)]
 pub enum Flag {
-    Z, // zero flag
-    N, // add/sub
-    H, // half carry
+    Z,
+    // zero flag
+    N,
+    // add/sub
+    H,
+    // half carry
     C, // carry flag
 }
 
@@ -70,12 +73,7 @@ impl Registers {
         }
     }
 
-    /// Sets the value in one of the 8 bit CPU registers
-    ///
-    /// # Arguments
-    ///
-    /// * `reg` - The register to be written to.
-    /// * `value` - u8 value written to the specified register
+    /// Sets the value in the specified the 8 bit CPU register
     pub fn set_r8(&mut self, reg: Register8b, value: u8) {
         match reg {
             Register8b::A => self.a = value,
@@ -89,15 +87,11 @@ impl Registers {
         }
     }
 
-    /// Retrieves value stored in one of the 8 bit CPU registers.
+    /// Retrieves the value stored in the specified 8 bit CPU register.
     ///
     /// # Arguments
     ///
-    /// * `reg` - The register to be read from.
-    ///
-    /// # Return value
-    ///
-    /// `u8` type.
+    /// * `reg` - The 8 bit register to be read from.
     pub fn get_r8(&self, reg: Register8b) -> u8 {
         match reg {
             Register8b::A => self.a,
@@ -115,12 +109,8 @@ impl Registers {
     ///
     /// # Arguments
     ///
-    /// * `reg` - The register to be written to.
-    /// * `value` - u16 value written to the specified register
-    ///
-    /// # Return value
-    ///
-    /// `u16` type.
+    /// * `reg` - The register written to.
+    /// * `value` - `u16` value written to the specified register.
     pub fn set_r16(&mut self, reg: Register16b, value: u16) {
         match reg {
             Register16b::AF => {
@@ -147,15 +137,11 @@ impl Registers {
             Register16b::PC => self.pc = value,
         }
     }
-    /// Retrieves value stored in one of the 8 bit CPU registers.
+    /// Retrieves the value stored in the specified 16 bit CPU register.
     ///
     /// # Arguments
     ///
-    /// * `reg` - The register to be read from.
-    ///
-    /// # Return value
-    ///
-    /// `u16` type.
+    /// * `reg` - The 16 bit register to be read from.
     pub fn get_r16(&self, reg: Register16b) -> u16 {
         match reg {
             Register16b::AF => bytes_to_word(self.a, self.f),
@@ -190,7 +176,7 @@ impl Registers {
     ///
     /// # Arguments
     ///
-    /// * `flag` - The flag to be read from. One of Flag::{Z, N, H, C}.
+    /// * `flag` - The flag to be read from. One of `Flag::{Z, N, H, C}`.
     ///
     /// # Return value
     ///
@@ -198,7 +184,7 @@ impl Registers {
     /// | return value  | flag state           |
     /// |:-------------:|:--------------------:|
     /// | `true`        | `register.flag == 1` |
-    /// | `false `      | `register.flag == 0` |
+    /// | `false`       | `register.flag == 0` |
     pub fn flag_value(&self, flag: Flag) -> bool {
         let bit: u8 = match flag {
             Flag::Z => (self.f & 0b_1000_0000) >> 7,
@@ -230,15 +216,12 @@ impl fmt::Display for Registers {
     }
 }
 
-/// unit tests for CPU registers
-///
-/// NOTE: test functions named as `register_{TYPE}_{TEST}...`, where `TEST` refers to the functionality/cases tested for
 #[cfg(test)]
-pub mod test {
+pub(crate) mod test {
     use super::*;
 
-    /// test helper module
-    pub mod common {
+    /// Test helpers module
+    pub(crate) mod common {
         use super::super::*;
 
         pub const REGISTERS_8B: &[Register8b] = &[
@@ -266,56 +249,43 @@ pub mod test {
 
     #[test]
     fn register_r8_set_get() {
-        let registers_8b = common::REGISTERS_8B;
-
         let mut registers = Registers::new();
 
-        for reg in registers_8b {
+        for reg in common::REGISTERS_8B {
             registers.set_r8(*reg, 0x1)
         }
-
-        let registers_8b = common::REGISTERS_8B;
-
-        for reg in registers_8b {
+        for reg in common::REGISTERS_8B {
             assert_eq!(1u8, registers.get_r8(*reg))
         }
     }
 
     #[test]
     fn register_r8_init_zero_get() {
-        let registers_8b = common::REGISTERS_8B;
-
         let registers = Registers::new();
 
-        for reg in registers_8b {
+        for reg in common::REGISTERS_8B {
             assert_eq!(0u8, registers.get_r8(*reg));
         }
     }
 
     #[test]
     fn register_r16_init_zero_get() {
-        let registers_16b = common::REGISTERS_16B;
-
         let registers = Registers::new();
 
-        for reg in registers_16b {
+        for reg in common::REGISTERS_16B {
             assert_eq!(0u16, registers.get_r16(*reg));
         }
     }
 
     #[test]
     fn register_r16_set_get() {
-        let registers_16b = common::REGISTERS_16B;
-
         let mut registers = Registers::new();
 
-        for reg in registers_16b {
+        for reg in common::REGISTERS_16B {
             registers.set_r16(*reg, 0xF0F0u16)
         }
 
-        let registers_16b = common::REGISTERS_16B;
-
-        for reg in registers_16b {
+        for reg in common::REGISTERS_16B {
             assert_eq!(0xF0F0u16, registers.get_r16(*reg));
         }
     }
@@ -324,14 +294,11 @@ pub mod test {
     fn register_r16_set_r8_get() {
         let mut registers = Registers::new();
 
-        let registers_16b = common::REGISTERS_16B;
-
-        for reg_16b in registers_16b {
+        for reg_16b in common::REGISTERS_16B {
             registers.set_r16(*reg_16b, 0xF0F0u16)
-        }
+        };
 
-        let registers_8b = common::REGISTERS_8B;
-        for reg_8b in registers_8b {
+        for reg_8b in common::REGISTERS_8B {
             assert_eq!(0xF0u8, registers.get_r8(*reg_8b));
         }
     }
@@ -339,10 +306,9 @@ pub mod test {
     #[test]
     fn register_r8_set_r16_get() {
         let mut registers = Registers::new();
+        ;
 
-        let registers_8b = common::REGISTERS_8B;
-
-        for reg_8b in registers_8b {
+        for reg_8b in common::REGISTERS_8B {
             registers.set_r8(*reg_8b, 0xF0u8);
         }
 
@@ -364,38 +330,30 @@ pub mod test {
 
     #[test]
     fn register_flag_init_zero_get() {
-        let flags = common::FLAGS;
-
         let registers = Registers::new();
 
-        for flag in flags {
+        for flag in common::FLAGS {
             assert_eq!(false, registers.flag_value(*flag));
         }
     }
 
     #[test]
     fn register_flag_set_clear() {
-        let flags = common::FLAGS;
-
         let mut registers = Registers::new();
         // set all flags and check for true
-        for flag in flags {
+        for flag in common::FLAGS {
             registers.set_flag(*flag, true);
         }
 
-        let flags = common::FLAGS;
-        for flag in flags {
+        for flag in common::FLAGS {
             assert_eq!(true, registers.flag_value(*flag));
         }
 
-        let flags = common::FLAGS;
-        // clear all flags and check for false
-        for flag in flags {
+        for flag in common::FLAGS {
             registers.set_flag(*flag, false);
         }
 
-        let flags = common::FLAGS;
-        for flag in flags {
+        for flag in common::FLAGS {
             assert_eq!(false, registers.flag_value(*flag));
         }
     }

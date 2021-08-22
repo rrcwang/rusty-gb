@@ -1,4 +1,4 @@
-use crate::utils::*;
+use crate::utils::{bytes_to_word, word_to_bytes};
 use std::boxed::Box;
 
 // TODO implement memory

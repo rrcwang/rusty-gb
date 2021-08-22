@@ -1,5 +1,5 @@
 use criterion::{black_box, Criterion};
-use rusty_gb::registers::{Register16b, Register8b, Registers};
+use rusty_gb::cpu::registers::{Register16b, Register8b, Registers};
 
 fn reg_16b_write(regs: &mut Registers) {
     regs.set_r16(Register16b::AF, 0xFFFF);

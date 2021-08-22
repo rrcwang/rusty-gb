@@ -1,9 +1,10 @@
+use registers::{Flag, Register16b, Register8b, Registers};
+
 // modules
 use crate::{
-    memory, registers,
+    memory,
     utils::{bytes_to_word, word_to_bytes},
 };
-use registers::{Flag, Register16b, Register8b, Registers};
 
 /// Implements arithmetic logic for `Cpu` functions.
 mod alu;
@@ -88,5 +89,6 @@ impl Cpu {
     }
 }
 
+pub mod registers;
 #[cfg(test)]
 mod tests;
