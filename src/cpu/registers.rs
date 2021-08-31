@@ -153,7 +153,7 @@ impl Registers {
         }
     }
 
-    /// Sets desired flag in CPU register F to 1.
+    /// Sets a flag in CPU register F to 1.
     ///
     /// # Arguments
     ///
@@ -296,7 +296,7 @@ pub(crate) mod test {
 
         for reg_16b in common::REGISTERS_16B {
             registers.set_r16(*reg_16b, 0xF0F0u16)
-        };
+        }
 
         for reg_8b in common::REGISTERS_8B {
             assert_eq!(0xF0u8, registers.get_r8(*reg_8b));
@@ -306,7 +306,6 @@ pub(crate) mod test {
     #[test]
     fn register_r8_set_r16_get() {
         let mut registers = Registers::new();
-        ;
 
         for reg_8b in common::REGISTERS_8B {
             registers.set_r8(*reg_8b, 0xF0u8);

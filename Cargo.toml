@@ -5,7 +5,7 @@ authors = ["zrauf <zrauf@sfu.ca>", "rrcwang <rrcwang@g.ucla.edu>"]
 edition = "2018"
 
 [dependencies]
-"thiserror" = "1.0.25"
+"thiserror" = "^1.0"
 
 [dev-dependencies]
 criterion = "^0.3"

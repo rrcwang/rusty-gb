@@ -208,10 +208,10 @@ impl Cpu {
     /// * `y` - `u8` operand
     ///
     /// # Flags
-    /// `Z` if result == 0, iff`A == y`
-    /// `N = 1`
-    /// `H` if borrow from bit 4
-    /// `C` if borrow from bit 8, iff `A < y`
+    /// * `Z` if result == 0, iff`A == y`
+    /// * `N = 1`
+    /// * `H` if borrow from bit 4
+    /// * `C` if borrow from bit 8, iff `A < y`
     pub(in crate::cpu) fn alu_cp_a(&mut self, y: u8) {
         let a = self.registers.get_r8(Register8b::A);
         let _ = self.alu_sub_bytes(a, y, false);
@@ -223,10 +223,10 @@ impl Cpu {
     /// * `x` - `u8` operand
     ///
     /// # Flags
-    /// `Z` if result == 0
-    /// `N = 0`
-    /// `H = 0`
-    /// `C` the value of the most significant bit in `x`, which is shifted out.
+    /// * `Z` if result == 0
+    /// * `N = 0`
+    /// * `H = 0`
+    /// * `C` the value of the most significant bit in `x`, which is shifted out.
     pub(in crate::cpu) fn bit_op_rlc(&mut self, x: u8) -> u8 {
         let carry_out = x >> 7; // fills with 0
         let carry_in = self.registers.flag_value(Flag::C) as u8;
@@ -246,10 +246,10 @@ impl Cpu {
     /// * `x` - `u8` operand
     ///
     /// # Flags
-    /// `Z` if result == 0
-    /// `N = 0`
-    /// `H = 0`
-    /// `C` the value of the least significant bit in `x`, which is shifted out.
+    /// * `Z` if result == 0
+    /// * `N = 0`
+    /// * `H = 0`
+    /// * `C` the value of the least significant bit in `x`, which is shifted out.
     pub(in crate::cpu) fn bit_op_rrc(&mut self, x: u8) -> u8 {
         let carry_out = x << 7; // fills with 0
         let carry_in = self.registers.flag_value(Flag::C) as u8;

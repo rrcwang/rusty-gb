@@ -122,12 +122,18 @@ impl Cpu {
             }
             0x0F => {
                 // RRCA
-                self.unimpl_instr();
+                let mut value = self.registers.get_r8(Register8b::A);
+                value = self.bit_op_rrc(value);
+
+                self.registers.set_r8(Register8b::A, value);
+                self.registers.set_flag(Flag::Z, false);
+
                 4
             }
             0x10 => {
                 // STOP
                 self.unimpl_instr();
+                // TODO: MMU clock speed
                 self.registers.pc = self.registers.pc.wrapping_add(1);
                 4
             }
@@ -170,6 +176,16 @@ impl Cpu {
                 let value: u8 = self.fetch_byte();
                 self.registers.set_r8(Register8b::D, value);
                 8
+            }
+            0x17 => {
+                // RLA
+                self.unimpl_instr();
+                4
+            }
+            0x18 => {
+                // JR i8
+                self.unimpl_instr();
+                12
             }
             0x19 => {
                 // ADD HL, DE
@@ -1279,6 +1295,26 @@ impl Cpu {
                 self.alu_add_bytes(a, y, false);
                 8
             }
+            0xC7 => {
+                // RST 00h
+                self.unimpl_instr();
+                16
+            }
+            0xC8 => {
+                // RET Z
+                self.unimpl_instr();
+                // ?
+            }
+            0xC9 => {
+                // RET
+                self.unimpl_instr();
+                16
+            }
+            0xCA => {
+                // JP Z, u16
+                self.unimpl_instr();
+                // ? 12-16
+            }
             0xCB => {
                 // PREFIX
                 let instr = self.fetch_byte();
@@ -1312,6 +1348,11 @@ impl Cpu {
                 let a = self.registers.get_r8(Register8b::A);
                 self.alu_sub_bytes(a, y, false);
                 8
+            }
+            0xD7 => {
+                // RST 10h
+                self.unimpl_instr();
+                16
             }
             0xDE => {
                 // SBC A, d8
@@ -1356,6 +1397,11 @@ impl Cpu {
                 let y = self.fetch_byte();
                 self.alu_and_a(y);
                 8
+            }
+            0xE7 => {
+                // RST 20h
+                self.unimpl_instr();
+                16
             }
             0xE8 => {
                 // ADD SP, r8
@@ -1424,6 +1470,11 @@ impl Cpu {
                 let y = self.fetch_byte();
                 self.alu_or_a(y);
                 8
+            }
+            0xF7 => {
+                // RST 30h
+                self.unimpl_instr();
+                16
             }
             0xF8 => {
                 // LD HL, SP + r8
