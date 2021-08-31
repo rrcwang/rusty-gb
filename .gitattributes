@@ -1,5 +1,8 @@
-* text eol=auto
+* text  eol=auto
 
-*.rs text
-*.toml text
-*.md text
+*.rs    text
+*.toml  text
+*.md    text
+
+*.pdf   binary
+*.xlsx  binary
